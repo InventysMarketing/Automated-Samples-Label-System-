@@ -147,14 +147,24 @@
   .note{margin-top:16px;font-size:11.5px;color:var(--slate);background:var(--blue-tint);border-left:3px solid var(--blue);padding:9px 12px;border-radius:0 5px 5px 0;}
   .note b{color:var(--ink);}
   #printRoot{display:none;}
+  /* App hidden until authenticated */
+  .app-shell{display:none;}
+  .app-shell.unlocked{display:block;}
+
   @media print{
     @page{ size:A4; margin:8mm; }
     body.printing .app-shell{ display:none !important; }
     body.printing #printRoot{ display:block !important; }
     *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
   }
-  .psheet{display:flex;flex-wrap:wrap;gap:2mm;align-content:flex-start;align-items:flex-start;}
-  .plabel{position:relative;border:1.2px solid #232323;box-sizing:border-box;break-inside:avoid;background:#fff;overflow:hidden;}
+  /* A4 sheet = 210mm - 2×8mm margin = 194×281mm */
+  .psheet{position:relative;width:194mm;height:281mm;background:#fff;break-after:page;}
+  .psheet:last-child{break-after:auto;}
+  .plabel{position:absolute;border:1.2px solid #232323;box-sizing:border-box;background:#fff;overflow:hidden;}
+  /* preview: show sheets as cards */
+  @media screen{
+    #printRoot .psheet{border:1px solid var(--line);box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:24px;}
+  }
   /* invoice print (shared) */
   .pinv{font-family:var(--label-sans);color:#111;font-size:10pt;}
   .pinv .ihead{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:7px;margin-bottom:7px;}
@@ -557,12 +567,24 @@ function logoImg(h,u){return `<img class="lab-logo" src="${LOGO}" style="height:
 /* ---- inner label ---- */
 function innerBody(it,b,tier,u){
   const sm=tier==='small', lg=tier==='large';
-  const padmm=lg?2:sm?1.2:1.5, gap=sm?.5:.8;
-  const fName=lg?4.2:sm?2.3:3.2, fRow=lg?2.9:sm?1.85:2.4, fCo=lg?2.6:sm?1.7:2.1, logoH=lg?7:sm?3.2:4.6;
+  if(sm){
+    /* Compact 2-line layout for tiny bottles (10–25 mL) — every mm counts */
+    const p=u(1.1), f1=u(1.55), f2=u(1.9), f3=u(2.1), logoH=u(2.9);
+    return `<div class="lab-pad" style="padding:${p};display:flex;flex-direction:column;gap:${u(.35)};">
+      <div class="lab-hd"><div class="lab-co" style="font-size:${f1};max-width:55%;line-height:1.15;">Inventys Research Company Pvt Ltd</div>${logoImg(2.9,u)}</div>
+      <div class="lab-div"></div>
+      <div class="lab-name" style="font-size:${f3};margin-top:${u(.15)};line-height:1.1;">${esc(it.customer)||'&nbsp;'}</div>
+      <div class="lab-row" style="font-size:${f1};flex-wrap:wrap;gap:${u(.5)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
+      <div class="lab-row" style="font-size:${f1};gap:${u(.8)};"><span class="lab-k">LOT</span><span class="lab-v">${esc(b.batch)}</span><span class="lab-k">WT</span><span class="lab-v">${esc(b.qty)}&thinsp;${esc(it.unit)}</span></div>
+      <div class="lab-row" style="font-size:${f1};"><span class="lab-k">ORIGIN</span><span class="lab-origin" style="font-size:${f1};">MADE IN INDIA</span></div>
+    </div>`;
+  }
+  const padmm=lg?2:1.3, gap=lg?.8:.6;
+  const fName=lg?4.2:2.9, fRow=lg?2.9:2.1, fCo=lg?2.6:2.0, logoH=lg?7:4.2;
   return `<div class="lab-pad" style="padding:${u(padmm)};gap:${u(gap)};">
     <div class="lab-hd"><div class="lab-co" style="font-size:${u(fCo)};max-width:62%;">Inventys Research Company Pvt Ltd</div>${logoImg(logoH,u)}</div>
     <div class="lab-div" style="margin-top:${u(.3)};"></div>
-    <div class="lab-name" style="font-size:${u(fName)};margin-top:${u(.4)};">${esc(it.customer)||'&nbsp;'}</div>
+    <div class="lab-name" style="font-size:${u(fName)};margin-top:${u(.35)};">${esc(it.customer)||'&nbsp;'}</div>
     <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k" style="margin-left:auto;">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
     <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">LOT NO</span><span class="lab-v">${esc(b.batch)}</span></div>
     <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">NET WEIGHT</span><span class="lab-v">${esc(b.qty)} ${esc(it.unit)}</span></div>
@@ -573,40 +595,45 @@ function innerBody(it,b,tier,u){
 /* ---- outer label (base sizes; scaled by auto-fit) ---- */
 function outerBody(it,b,po,u){
   const qty=(parseFloat(b.qty)||0).toFixed(3);
-  return `<div class="lab-pad flow" style="padding:${u(4)};display:flex;flex-direction:column;gap:${u(1.3)};">
-    <div class="lab-hd">${logoImg(7,u)}<div class="lab-co" style="font-size:${u(2.6)};text-align:right;">Inventys Research Company Pvt Ltd<br><span style="font-weight:400;color:#666;font-size:${u(2.1)};">MADE IN INDIA</span></div></div>
+  const signalColor=it.signal==='Danger'?'#c2410c':it.signal==='Warning'?'#b45309':'#333';
+  return `<div class="lab-pad flow" style="padding:${u(3.5)};display:flex;flex-direction:column;gap:${u(1.0)};">
+    <div class="lab-hd">${logoImg(6.5,u)}<div style="text-align:right;"><div class="lab-co" style="font-size:${u(2.5)};">Inventys Research Company Pvt Ltd</div><div style="font-size:${u(2.0)};color:#666;font-family:var(--label-sans);">MADE IN INDIA</div></div></div>
     <div class="lab-div"></div>
-    <div class="lab-name" style="font-size:${u(4.2)};">${esc(it.customer)||'&nbsp;'}</div>
-    <div style="display:flex;gap:${u(5)};flex-wrap:wrap;">
-      <div class="lab-row" style="font-size:${u(2.7)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span></div>
-      <div class="lab-row" style="font-size:${u(2.7)};"><span class="lab-k">PO NO</span><span class="lab-v">${esc(po)||'—'}</span></div>
-      <div class="lab-row" style="font-size:${u(2.7)};"><span class="lab-k">LOT NO</span><span class="lab-v">${esc(b.batch)}</span></div>
-      <div class="lab-row" style="font-size:${u(2.7)};"><span class="lab-k">QTY</span><span class="lab-v">${qty} ${esc(it.unit)}</span></div>
-      <div class="lab-row" style="font-size:${u(2.7)};"><span class="lab-k">Signal</span><span class="lab-v" style="color:#c2410c;">${esc(it.signal)}</span></div>
+    <div class="lab-name" style="font-size:${u(3.9)};margin-top:${u(.2)};">${esc(it.customer)||'&nbsp;'}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:${u(1.2)} ${u(4.5)};">
+      <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)||'—'}</span></div>
+      <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">PO</span><span class="lab-v">${esc(po)||'—'}</span></div>
+      <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">LOT</span><span class="lab-v">${esc(b.batch)||'—'}</span></div>
+      <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">QTY</span><span class="lab-v">${qty} ${esc(it.unit)}</span></div>
+      ${it.signal?`<div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">GHS SIGNAL</span><span class="lab-v" style="color:${signalColor};font-weight:700;">${esc(it.signal).toUpperCase()}</span></div>`:''}
     </div>
     <div class="lab-div"></div>
-    <div class="lab-sec" style="font-size:${u(2.7)};color:#c2410c;">⚠ HAZARD STATEMENTS</div>
-    ${it.hazards.length?it.hazards.map(h=>`<div class="lab-haz-row" style="font-size:${u(2.4)};">${h[0]?`<span class="lab-haz-code">${esc(h[0])}</span>`:''}<span>${esc(h[1])}</span></div>`).join(''):`<div style="font-size:${u(2.4)};color:#999;">—</div>`}
-    <div class="lab-sec" style="font-size:${u(2.7)};margin-top:${u(.8)};">PRECAUTIONARY STATEMENTS</div>
-    ${it.precautions.length?it.precautions.map(p=>`<div class="lab-haz-row" style="font-size:${u(2.4)};">${p[0]?`<span class="lab-v" style="color:#444;flex:none;">${esc(p[0])}</span>`:''}<span>${esc(p[1])}</span></div>`).join(''):`<div style="font-size:${u(2.4)};color:#999;">—</div>`}
-    <div class="lab-sec" style="font-size:${u(2.7)};margin-top:${u(.8)};">STORAGE</div>
-    <div style="font-family:var(--label-sans);font-size:${u(2.4)};color:#333;">${esc(it.storage)}</div>
-    <div class="lab-sec" style="font-size:${u(2.7)};margin-top:${u(.8)};">TRANSPORT</div>
-    <div style="font-family:var(--label-sans);font-size:${u(2.4)};color:#333;">${esc(it.transport)}</div>
-    <div style="font-family:var(--label-mono);font-size:${u(2.0)};color:#999;margin-top:${u(1.2)};">Source: SDS on file · used unchanged each dispatch</div>
+    ${it.hazards.length?`<div class="lab-sec" style="font-size:${u(2.5)};color:#c2410c;margin-bottom:${u(.35)};">⚠ HAZARD STATEMENTS</div>
+    ${it.hazards.map(h=>`<div class="lab-haz-row" style="font-size:${u(2.25)};margin-bottom:${u(.2)};line-height:1.25;">${h[0]?`<span class="lab-haz-code" style="font-size:${u(2.25)};min-width:${u(8.5)};">${esc(h[0])}</span>`:''}<span>${esc(h[1])}</span></div>`).join('')}<div style="height:${u(.5)};"></div>`:''}
+    ${it.precautions.length?`<div class="lab-sec" style="font-size:${u(2.5)};margin-bottom:${u(.35)};">PRECAUTIONARY STATEMENTS</div>
+    ${it.precautions.map(p=>`<div class="lab-haz-row" style="font-size:${u(2.25)};margin-bottom:${u(.2)};line-height:1.25;">${p[0]?`<span class="lab-v" style="color:#555;flex:none;min-width:${u(8.5)};font-size:${u(2.25)};">${esc(p[0])}</span>`:''}<span>${esc(p[1])}</span></div>`).join('')}<div style="height:${u(.5)};"></div>`:''}
+    ${it.storage?`<div class="lab-sec" style="font-size:${u(2.5)};margin-bottom:${u(.25)};">STORAGE</div>
+    <div style="font-family:var(--label-sans);font-size:${u(2.25)};color:#333;line-height:1.3;">${esc(it.storage)}</div><div style="height:${u(.5)};"></div>`:''}
+    ${it.transport?`<div style="background:#f0f5ff;border:${u(.5)} solid #b8d0f0;border-radius:${u(1)};padding:${u(1.5)} ${u(2)};margin-top:${u(.3)};">
+      <div class="lab-sec" style="font-size:${u(2.5)};color:#1b4e8a;margin-bottom:${u(.3)};">TRANSPORT / DG CLASSIFICATION</div>
+      <div style="font-family:var(--label-mono);font-size:${u(2.25)};color:#1b4e8a;font-weight:600;line-height:1.3;">${esc(it.transport)}</div>
+    </div>`:''}
+    <div style="font-family:var(--label-mono);font-size:${u(1.75)};color:#bbb;margin-top:${u(.8)};">SDS on file · Inventys Research Company Pvt Ltd · GSTIN 27AABCI4415K1ZL</div>
   </div>`;
 }
-/* auto-fit: measure content at scale 1 (real cm width) and shrink/grow font to fit the real label height */
+/* auto-fit: measure content at scale 1 then scale font to fill the real label height */
 function fitScale(it,b){
   const bo=bottle(b.bottleId);
   const probe=document.createElement('div');
-  probe.style.cssText=`position:absolute;left:-99999px;top:0;width:${bo.ow}cm;visibility:hidden;`;
-  probe.innerHTML=outerBody(it,b,state.order.po,UP);
+  /* render at actual mm — no images in probe to ensure synchronous layout */
+  probe.style.cssText=`position:fixed;left:-99999px;top:0;width:${bo.ow}cm;visibility:hidden;pointer-events:none;`;
+  const noImgBody=outerBody(it,b,state.order.po,UP).replace(/<img[^>]*>/g,`<div style="height:${UP(6.5)};"></div>`);
+  probe.innerHTML=noImgBody;
   document.body.appendChild(probe);
   const contentPx=probe.scrollHeight||probe.offsetHeight||1;
   document.body.removeChild(probe);
   const targetPx=bo.oh*PXCM;
-  return Math.max(0.45, Math.min(1.8, targetPx/contentPx));
+  return Math.max(0.3, Math.min(1.8, targetPx/contentPx));
 }
 
 const itemsEl=document.getElementById('items');
@@ -677,7 +704,11 @@ function renderInner(){
   if(!b){innerStage.innerHTML='';document.getElementById('innerDim').textContent='—';return;}
   const bo=bottle(b.bottleId);
   document.getElementById('innerDim').textContent=`${bo.name} · ${bo.h} × ${bo.w} cm`;
-  innerStage.innerHTML=`<span class="dim-w">${bo.w} cm</span><span class="dim-h">${bo.h} cm</span><div class="label" style="width:${bo.w*SCALE}px;height:${bo.h*SCALE}px;">${innerBody(it,b,bo.tier,US)}</div>`;
+  /* Cap the preview so a 14cm wide label doesn't overflow the 500px right panel */
+  const maxW=innerStage.parentElement.offsetWidth||420;
+  const dynScale=Math.min(SCALE, (maxW-40)/(bo.w));
+  const UI=x=>(x*dynScale/10)+'px';
+  innerStage.innerHTML=`<span class="dim-w">${bo.w} cm</span><span class="dim-h">${bo.h} cm</span><div class="label" style="width:${bo.w*dynScale}px;height:${bo.h*dynScale}px;">${innerBody(it,b,bo.tier,UI)}</div>`;
 }
 const outerStage=document.getElementById('outerStage');
 function renderOuter(){
@@ -686,9 +717,14 @@ function renderOuter(){
   if(!b){outerStage.innerHTML='';dimEl.textContent='—';fitEl.textContent='';return;}
   const bo=bottle(b.bottleId), s=fitScale(it,b);
   dimEl.textContent=`${bo.name} bag · ${bo.ow} × ${bo.oh} cm`;
-  fitEl.textContent=`font auto-fit ${Math.round(s*100)}%`;
-  const uo=x=>(x*s*OS/10)+'px';
-  outerStage.innerHTML=`<div class="label" style="width:${bo.ow*OS}px;height:${bo.oh*OS}px;">${outerBody(it,b,state.order.po,uo)}</div>`;
+  const pct=Math.round(s*100);
+  fitEl.textContent=`auto-fit ${pct}%${s<0.5?' ⚠ crowded — use a larger bag size':''}`;
+  fitEl.style.color=s<0.5?'var(--hazard)':'var(--slate)';
+  /* preview: cap to panel width so very wide outer labels stay readable */
+  const maxOW=outerStage.parentElement.offsetWidth||420;
+  const dynOS=Math.min(OS+8, (maxOW-40)/(bo.ow)); // +8 vs inner = bigger outer preview
+  const uo=x=>(x*s*dynOS/10)+'px';
+  outerStage.innerHTML=`<div class="label" style="width:${bo.ow*dynOS}px;height:${bo.oh*dynOS}px;">${outerBody(it,b,state.order.po,uo)}</div>`;
 }
 const silosEl=document.getElementById('silos');
 function renderSilos(){
@@ -708,12 +744,7 @@ function outerCells(){
   state.items.forEach(it=>it.batches.forEach(b=>{const bo=bottle(b.bottleId),n=Math.max(0,parseInt(b.copies)||0),s=fitScale(it,b);for(let j=0;j<n;j++)cells.push({w:bo.ow,h:bo.oh,html:outerBody(it,b,state.order.po,x=>(x*s)+'mm')});}));
   cells.sort((a,b)=>b.h-a.h||b.w-a.w); return cells;
 }
-function estimateSheets(cells){
-  const uW=194,uH=281,gap=2,g={};
-  cells.forEach(c=>{const k=c.w+'x'+c.h;(g[k]=g[k]||{w:c.w*10,h:c.h*10,n:0}).n++;});
-  let pages=0;Object.values(g).forEach(x=>{const pr=Math.max(1,Math.floor((uW+gap)/(x.w+gap))),pc=Math.max(1,Math.floor((uH+gap)/(x.h+gap)));pages+=Math.ceil(x.n/(pr*pc));});
-  return pages;
-}
+function estimateSheets(cells){return Math.max(0,packA4(cells).length);}
 function renderEstimates(){
   const ic=innerCells(); document.getElementById('innerEst').innerHTML=ic.length?`<b>${ic.length}</b> labels → ~<b>${estimateSheets(ic)}</b> A4`:'set Copies';
   const oc=outerCells(); document.getElementById('outerEst').innerHTML=oc.length?`<b>${oc.length}</b> labels → ~<b>${estimateSheets(oc)}</b> A4`:'set Copies';
@@ -761,9 +792,47 @@ function renderInvoice(){
   }
 }
 
+/* ---- A4 bin-packing (shelf first-fit, tallest-first) ---- */
+function packA4(cells){
+  /* A4 usable after 8mm margins each side */
+  const PW=194, PH=281, G=2; // mm
+  const pages=[];
+  let shelves=[], pageCells=[];
+  function flush(){if(pageCells.length){pages.push(pageCells);pageCells=[];shelves=[];}}
+  cells.forEach(cell=>{
+    const cw=cell.w*10, ch=cell.h*10;
+    let placed=false;
+    for(const sh of shelves){
+      const x=sh.usedW+(sh.usedW>0?G:0);
+      if(x+cw<=PW+0.1 && sh.y+ch<=PH+0.1){
+        pageCells.push({cell,x,y:sh.y});
+        sh.usedW=x+cw;
+        placed=true; break;
+      }
+    }
+    if(!placed){
+      const last=shelves[shelves.length-1];
+      const newY=last?last.y+last.h+G:0;
+      if(newY+ch>PH+0.1){flush();}
+      const sy=shelves.length===0?0:newY;
+      pageCells.push({cell,x:0,y:sy});
+      shelves.push({y:sy,h:ch,usedW:cw});
+    }
+  });
+  flush();
+  return pages;
+}
 /* ---- print ---- */
-function innerSheetHTML(){const c=innerCells();if(!c.length)return '<p style="font-family:sans-serif;">Set Copies on a batch.</p>';return `<div class="psheet">${c.map(x=>`<div class="plabel" style="width:${x.w}cm;height:${x.h}cm;">${x.html}</div>`).join('')}</div>`;}
-function outerSheetHTML(){const c=outerCells();if(!c.length)return '<p style="font-family:sans-serif;">Set Copies on a batch.</p>';return `<div class="psheet">${c.map(x=>`<div class="plabel" style="width:${x.w}cm;height:${x.h}cm;">${x.html}</div>`).join('')}</div>`;}
+function sheetHTML(cells){
+  if(!cells.length)return '<p style="font-family:sans-serif;padding:20px;">Set Copies on a batch to generate labels.</p>';
+  return packA4(cells).map(pg=>
+    `<div class="psheet">${pg.map(({cell:x,x:lx,y:ly})=>
+      `<div class="plabel" style="left:${lx}mm;top:${ly}mm;width:${x.w}cm;height:${x.h}cm;">${x.html}</div>`
+    ).join('')}</div>`
+  ).join('');
+}
+function innerSheetHTML(){return sheetHTML(innerCells());}
+function outerSheetHTML(){return sheetHTML(outerCells());}
 const SUP=`<div class="ico"><img src="${LOGO}" style="height:12mm;width:${12*LOGO_AR}mm;object-fit:contain;display:block;margin-bottom:3px;"><h1>Inventys Research Company Pvt. Ltd</h1><p>901C Tower 2, One International Centre, Senapati Bapat Marg, Prabhadevi, Mumbai 400013, India</p><p>Factory: K-38, Five Star Industrial Area, MIDC, Butibori, Nagpur 441122</p><p>Tel +91 22 7140 0200 · GSTIN 27AABCI4415K1ZL · IEC 0306019141</p></div>`;
 function partiesHTML(){return `<div class="parties"><div class="b"><div class="lbl">BUYER</div><b>${esc(state.order.buyer)}</b><br>${esc(state.order.country)}</div><div class="b"><div class="lbl">CONSIGNEE</div><b>${esc(state.order.buyer)}</b><br>${esc(state.order.country)}</div></div>`;}
 function proformaPrint(){
@@ -922,7 +991,7 @@ renderAll();
   function enterApp(email){
     saveSession({email, ts:Date.now()});
     document.getElementById('loginScreen').classList.add('hidden');
-    // update topbar
+    document.querySelector('.app-shell').classList.add('unlocked');
     const ini=initials(email), name=displayName(email);
     const tb=document.getElementById('topbarUser');
     const av=document.getElementById('topbarAvatar');
@@ -1073,6 +1142,7 @@ renderAll();
     setErr('lgErr1','');setErr('lgErr2','');setErr('lgErr3N','');setErr('lgErr3R','');
     showStep('lgStep1');
     document.getElementById('loginScreen').classList.remove('hidden');
+    document.querySelector('.app-shell').classList.remove('unlocked');
     document.getElementById('topbarUser').style.display='none';
     document.getElementById('genInfo').style.display='none';
   });
