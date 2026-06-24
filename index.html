@@ -174,14 +174,251 @@
   .pinv .ptot .g{font-weight:700;border-top:1.5px solid #111;padding-top:4px;font-size:10.5pt;}
   .pinv .pwords{font-family:var(--mono);font-size:8pt;margin-top:5px;}
   .pinv .pfoot{margin-top:10px;font-size:7.5pt;color:#444;border-top:1px solid #999;padding-top:6px;line-height:1.4;}
+
+  /* ── LOGIN SCREEN ───────────────────────────────────── */
+  #loginScreen{
+    position:fixed;inset:0;z-index:9999;
+    background:linear-gradient(135deg,#0d1a2d 0%,#1b2e47 50%,#0f2237 100%);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--sans);
+  }
+  #loginScreen.hidden{display:none;}
+  .lg-card{
+    background:#fff;border-radius:14px;width:100%;max-width:420px;
+    box-shadow:0 24px 64px rgba(0,0,0,.45);overflow:hidden;
+    animation:lgIn .22s ease-out;
+  }
+  @keyframes lgIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+  .lg-header{
+    background:linear-gradient(90deg,var(--blue),#1e5f99);
+    padding:28px 32px 22px;color:#fff;
+  }
+  .lg-logo-row{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+  .lg-logo-mark{
+    font-family:var(--mono);font-weight:700;letter-spacing:.16em;font-size:18px;
+    background:linear-gradient(90deg,#7fb6e6,var(--green),var(--orange));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .lg-logo-sep{width:1px;height:24px;background:rgba(255,255,255,.25);}
+  .lg-logo-sub{font-size:12px;color:rgba(255,255,255,.7);line-height:1.3;}
+  .lg-title{font-size:20px;font-weight:700;margin:0 0 4px;letter-spacing:-.02em;}
+  .lg-subtitle{font-size:13px;color:rgba(255,255,255,.7);margin:0;}
+  .lg-body{padding:28px 32px 32px;}
+  .lg-step{display:none;}
+  .lg-step.active{display:block;animation:lgIn .18s ease-out;}
+  .lg-label{display:block;font-size:11.5px;font-weight:600;color:var(--slate);margin-bottom:6px;letter-spacing:.02em;text-transform:uppercase;}
+  .lg-input{
+    width:100%;font-family:var(--sans);font-size:14px;color:var(--ink);
+    padding:10px 13px;border:1.5px solid var(--line);border-radius:8px;
+    background:#fff;transition:border-color .15s,box-shadow .15s;
+    outline:none;
+  }
+  .lg-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-tint);}
+  .lg-input.lg-otp{
+    font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.35em;
+    text-align:center;text-transform:uppercase;
+  }
+  .lg-domain{
+    display:flex;align-items:center;border:1.5px solid var(--line);border-radius:8px;
+    overflow:hidden;transition:border-color .15s,box-shadow .15s;
+    background:#fff;
+  }
+  .lg-domain:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-tint);}
+  .lg-domain input{
+    flex:1;border:none;outline:none;font-size:14px;color:var(--ink);
+    padding:10px 0 10px 13px;background:transparent;font-family:var(--sans);
+  }
+  .lg-domain-suffix{
+    padding:10px 13px 10px 4px;font-size:13px;font-family:var(--mono);
+    color:var(--blue);font-weight:600;white-space:nowrap;user-select:none;
+  }
+  .lg-btn{
+    width:100%;padding:11px;font-size:14px;font-weight:600;
+    background:linear-gradient(90deg,var(--blue),#1e5f99);
+    color:#fff;border:none;border-radius:8px;cursor:pointer;
+    margin-top:18px;letter-spacing:.01em;transition:opacity .15s,transform .1s;
+  }
+  .lg-btn:hover{opacity:.92;}
+  .lg-btn:active{transform:scale(.98);}
+  .lg-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+  .lg-err{
+    display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;
+    color:#991b1b;font-size:12.5px;padding:9px 12px;margin-top:14px;
+  }
+  .lg-err.show{display:block;}
+  .lg-otp-box{
+    background:linear-gradient(135deg,#f0f7ff,#e8f4e8);
+    border:1.5px dashed var(--blue);border-radius:10px;
+    padding:16px 20px;margin:18px 0 4px;text-align:center;
+  }
+  .lg-otp-box .otp-label{font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--slate);margin-bottom:8px;}
+  .lg-otp-box .otp-code{font-family:var(--mono);font-size:32px;font-weight:700;letter-spacing:.3em;color:var(--blue);}
+  .lg-otp-box .otp-note{font-size:11px;color:var(--slate);margin-top:6px;}
+  .lg-back{
+    background:none;border:none;color:var(--blue);cursor:pointer;
+    font-size:12.5px;padding:0;margin-top:14px;text-decoration:underline;
+    font-family:var(--sans);
+  }
+  .lg-field{margin-bottom:14px;}
+  .lg-divider{border:none;border-top:1px solid var(--line);margin:20px 0;}
+  .lg-user-badge{
+    display:flex;align-items:center;gap:10px;
+    background:var(--blue-tint);border:1px solid #c5d9ef;
+    border-radius:8px;padding:10px 13px;margin-bottom:20px;
+  }
+  .lg-avatar{
+    width:34px;height:34px;border-radius:50%;
+    background:linear-gradient(135deg,var(--blue),var(--green));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:14px;color:#fff;flex:none;
+  }
+  .lg-user-info{flex:1;min-width:0;}
+  .lg-user-name{font-weight:600;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lg-user-email{font-size:11px;color:var(--slate);font-family:var(--mono);}
+  .lg-strength{height:4px;border-radius:2px;margin-top:6px;background:var(--line);overflow:hidden;}
+  .lg-strength-bar{height:100%;border-radius:2px;transition:width .25s,background .25s;}
+  .lg-strength-text{font-size:11px;font-family:var(--mono);margin-top:4px;color:var(--muted);}
+  .lg-footer{text-align:center;font-size:11px;color:var(--slate);margin-top:20px;border-top:1px solid var(--line);padding-top:16px;}
+  .lg-topbar-user{display:flex;align-items:center;gap:8px;margin-left:auto;}
+  .lg-topbar-avatar{
+    width:28px;height:28px;border-radius:50%;
+    background:linear-gradient(135deg,var(--blue),var(--green));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:11px;color:#fff;flex:none;
+  }
+  .lg-topbar-name{font-size:12px;color:#cdd8e3;}
+  .lg-topbar-logout{
+    background:none;border:1px solid #3a4861;border-radius:4px;
+    color:#9fb0c2;font-size:11px;padding:3px 8px;cursor:pointer;
+    font-family:var(--mono);letter-spacing:.04em;
+  }
+  .lg-topbar-logout:hover{border-color:#6a7f9a;color:#cdd8e3;}
+  #loginToast{
+    position:fixed;bottom:24px;right:24px;z-index:10000;
+    background:var(--ink);color:#e6ecf3;font-size:13px;
+    padding:12px 18px;border-radius:9px;box-shadow:0 8px 32px rgba(0,0,0,.35);
+    display:none;border-left:4px solid var(--green);
+  }
+  #loginToast.show{display:flex;align-items:center;gap:10px;animation:lgIn .2s ease-out;}
 </style>
 </head>
 <body>
+
+<!-- ── LOGIN SCREEN ───────────────────────────────────────────── -->
+<div id="loginScreen">
+  <div class="lg-card">
+    <div class="lg-header">
+      <div class="lg-logo-row">
+        <span class="lg-logo-mark">REAGENT</span>
+        <div class="lg-logo-sep"></div>
+        <span class="lg-logo-sub">Inventys Research<br>Company Pvt Ltd</span>
+      </div>
+      <h1 class="lg-title">Sign in to your account</h1>
+      <p class="lg-subtitle">Access restricted to Inventys staff</p>
+    </div>
+
+    <div class="lg-body">
+
+      <!-- STEP 1 · Email -->
+      <div class="lg-step active" id="lgStep1">
+        <div class="lg-field">
+          <label class="lg-label" for="lgEmailInput">Work email address</label>
+          <div class="lg-domain">
+            <input type="text" id="lgEmailInput" class="" placeholder="yourname" autocomplete="username" spellcheck="false">
+            <span class="lg-domain-suffix">@inventys.in</span>
+          </div>
+        </div>
+        <button class="lg-btn" id="lgSendOtp">Continue →</button>
+        <div class="lg-err" id="lgErr1"></div>
+        <div class="lg-footer">Only <strong>@inventys.in</strong> email addresses are allowed.</div>
+      </div>
+
+      <!-- STEP 2 · OTP verify -->
+      <div class="lg-step" id="lgStep2">
+        <div class="lg-user-badge">
+          <div class="lg-avatar" id="lgAvatar2">?</div>
+          <div class="lg-user-info">
+            <div class="lg-user-name" id="lgUserName2"></div>
+            <div class="lg-user-email" id="lgUserEmail2"></div>
+          </div>
+        </div>
+
+        <div class="lg-otp-box">
+          <div class="otp-label">Your one-time password</div>
+          <div class="otp-code" id="lgOtpDisplay">------</div>
+          <div class="otp-note">Copy this code and enter it below &nbsp;·&nbsp; expires in <span id="lgOtpTimer">5:00</span></div>
+        </div>
+
+        <div class="lg-field" style="margin-top:16px;">
+          <label class="lg-label" for="lgOtpInput">Enter OTP</label>
+          <input type="text" id="lgOtpInput" class="lg-input lg-otp" maxlength="6" placeholder="······" autocomplete="one-time-code">
+        </div>
+        <button class="lg-btn" id="lgVerifyOtp">Verify OTP →</button>
+        <div class="lg-err" id="lgErr2"></div>
+        <button class="lg-back" id="lgBackTo1">← Use a different email</button>
+      </div>
+
+      <!-- STEP 3A · Set password (new user) -->
+      <div class="lg-step" id="lgStep3New">
+        <div class="lg-user-badge">
+          <div class="lg-avatar" id="lgAvatar3N">?</div>
+          <div class="lg-user-info">
+            <div class="lg-user-name" id="lgUserName3N"></div>
+            <div class="lg-user-email" id="lgUserEmail3N"></div>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--slate);margin:0 0 18px;">Welcome! Set a password to secure your account.</p>
+        <div class="lg-field">
+          <label class="lg-label" for="lgNewPwd">Create password</label>
+          <input type="password" id="lgNewPwd" class="lg-input" placeholder="Minimum 8 characters" autocomplete="new-password">
+          <div class="lg-strength"><div class="lg-strength-bar" id="lgStrBar" style="width:0;background:var(--line);"></div></div>
+          <div class="lg-strength-text" id="lgStrText"></div>
+        </div>
+        <div class="lg-field">
+          <label class="lg-label" for="lgConfPwd">Confirm password</label>
+          <input type="password" id="lgConfPwd" class="lg-input" placeholder="Re-enter password" autocomplete="new-password">
+        </div>
+        <button class="lg-btn" id="lgSetPwd">Set password &amp; sign in →</button>
+        <div class="lg-err" id="lgErr3N"></div>
+      </div>
+
+      <!-- STEP 3B · Enter password (returning user) -->
+      <div class="lg-step" id="lgStep3Ret">
+        <div class="lg-user-badge">
+          <div class="lg-avatar" id="lgAvatar3R">?</div>
+          <div class="lg-user-info">
+            <div class="lg-user-name" id="lgUserName3R"></div>
+            <div class="lg-user-email" id="lgUserEmail3R"></div>
+          </div>
+        </div>
+        <div class="lg-field">
+          <label class="lg-label" for="lgRetPwd">Password</label>
+          <input type="password" id="lgRetPwd" class="lg-input" placeholder="Enter your password" autocomplete="current-password">
+        </div>
+        <button class="lg-btn" id="lgSignIn">Sign in →</button>
+        <div class="lg-err" id="lgErr3R"></div>
+        <button class="lg-back" id="lgForgotPwd">Forgot password? Reset via OTP</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="loginToast">
+  <span>✓</span><span id="loginToastMsg">Signed in successfully</span>
+</div>
+
 <div class="app-shell">
 <div class="topbar">
   <div class="brand"><span class="mark">REAGENT</span><span class="sub">Inventys · dispatch &amp; label console</span></div>
   <span class="tag">prototype</span>
-  <div class="outs">generates&nbsp; <b>Inner label</b> · <b>Outer label</b> · <b>Invoice</b> · <b>Packing list</b></div>
+  <div class="outs" style="display:none;" id="genInfo">generates&nbsp; <b>Inner label</b> · <b>Outer label</b> · <b>Invoice</b> · <b>Packing list</b></div>
+  <div class="lg-topbar-user" id="topbarUser" style="display:none;">
+    <div class="lg-topbar-avatar" id="topbarAvatar">?</div>
+    <span class="lg-topbar-name" id="topbarName"></span>
+    <button class="lg-topbar-logout" id="logoutBtn">SIGN OUT</button>
+  </div>
 </div>
 <div class="wrap">
   <div class="left">
@@ -603,6 +840,244 @@ document.body.addEventListener('click',e=>{
   renderAll();
 });
 renderAll();
+
+/* ── AUTH SYSTEM ─────────────────────────────────────────────── */
+(function(){
+  const DOMAIN = '@inventys.in';
+  const LS_KEY = 'rgt_users_v1';
+  const SS_KEY = 'rgt_session_v1';
+  let currentEmail = '';
+  let generatedOtp  = '';
+  let otpExpiry     = 0;
+  let otpTimerRef   = null;
+
+  /* ── helpers ── */
+  function usersDB(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch{return {};}}
+  function saveUsers(db){localStorage.setItem(LS_KEY,JSON.stringify(db));}
+  function session(){try{return JSON.parse(sessionStorage.getItem(SS_KEY)||'null');}catch{return null;}}
+  function saveSession(data){sessionStorage.setItem(SS_KEY,JSON.stringify(data));}
+
+  async function hashPwd(pwd){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd+'rgt_salt_v1'));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function initials(email){
+    const local = email.split('@')[0];
+    const parts = local.split(/[._-]/);
+    return (parts[0]?.[0]||'').toUpperCase() + (parts[1]?.[0]||'').toUpperCase() || local[0].toUpperCase();
+  }
+  function displayName(email){
+    const local = email.split('@')[0];
+    return local.split(/[._-]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+  }
+
+  function showStep(id){
+    document.querySelectorAll('.lg-step').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+  function setErr(id,msg){
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.textContent=msg;
+    el.classList.toggle('show',!!msg);
+  }
+  function setBadge(prefix,email){
+    const ini=initials(email), name=displayName(email);
+    const av=document.getElementById('lgAvatar'+prefix);
+    const nm=document.getElementById('lgUserName'+prefix);
+    const em=document.getElementById('lgUserEmail'+prefix);
+    if(av) av.textContent=ini;
+    if(nm) nm.textContent=name;
+    if(em) em.textContent=email+DOMAIN;
+  }
+
+  function generateOtp(){
+    return String(Math.floor(100000+Math.random()*900000));
+  }
+
+  function startOtpTimer(){
+    clearInterval(otpTimerRef);
+    const timerEl=document.getElementById('lgOtpTimer');
+    let remaining=300; // 5 min
+    function tick(){
+      const m=Math.floor(remaining/60), s=remaining%60;
+      if(timerEl) timerEl.textContent=`${m}:${s.toString().padStart(2,'0')}`;
+      if(remaining<=0){clearInterval(otpTimerRef);if(timerEl)timerEl.textContent='expired';}
+      remaining--;
+    }
+    tick();
+    otpTimerRef=setInterval(tick,1000);
+  }
+
+  function toast(msg){
+    const el=document.getElementById('loginToast');
+    const msg_el=document.getElementById('loginToastMsg');
+    if(!el||!msg_el) return;
+    msg_el.textContent=msg;
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'),3500);
+  }
+
+  function enterApp(email){
+    saveSession({email, ts:Date.now()});
+    document.getElementById('loginScreen').classList.add('hidden');
+    // update topbar
+    const ini=initials(email), name=displayName(email);
+    const tb=document.getElementById('topbarUser');
+    const av=document.getElementById('topbarAvatar');
+    const nm=document.getElementById('topbarName');
+    const gi=document.getElementById('genInfo');
+    if(tb){tb.style.display='flex';}
+    if(gi){gi.style.display='flex';}
+    if(av) av.textContent=ini;
+    if(nm) nm.textContent=name;
+    toast('Welcome back, '+name+'!');
+  }
+
+  /* ── auto-login if session exists ── */
+  const sess=session();
+  if(sess && sess.email){
+    enterApp(sess.email);
+  }
+
+  /* ── Step 1 · send OTP ── */
+  document.getElementById('lgSendOtp').addEventListener('click', async function(){
+    setErr('lgErr1','');
+    const raw=(document.getElementById('lgEmailInput').value||'').trim().toLowerCase();
+    if(!raw){setErr('lgErr1','Please enter your username (part before @inventys.in).');return;}
+    if(raw.includes('@')){setErr('lgErr1','Enter only the part before @inventys.in — the domain is added automatically.');return;}
+    if(!/^[a-z0-9][a-z0-9._-]*$/.test(raw)){setErr('lgErr1','Username contains invalid characters.');return;}
+    currentEmail=raw;
+    generatedOtp=generateOtp();
+    otpExpiry=Date.now()+300000;
+    document.getElementById('lgOtpDisplay').textContent=generatedOtp;
+    setBadge('2',currentEmail);
+    startOtpTimer();
+    showStep('lgStep2');
+    document.getElementById('lgOtpInput').focus();
+  });
+
+  /* ── Step 2 · verify OTP ── */
+  document.getElementById('lgVerifyOtp').addEventListener('click', function(){
+    setErr('lgErr2','');
+    const entered=(document.getElementById('lgOtpInput').value||'').trim();
+    if(!entered){setErr('lgErr2','Please enter the OTP shown above.');return;}
+    if(Date.now()>otpExpiry){setErr('lgErr2','OTP has expired. Go back and request a new one.');return;}
+    if(entered!==generatedOtp){setErr('lgErr2','Incorrect OTP. Please try again.');return;}
+    clearInterval(otpTimerRef);
+    const db=usersDB();
+    const hasPassword=!!(db[currentEmail]&&db[currentEmail].pwd);
+    if(hasPassword){
+      setBadge('3R',currentEmail);
+      showStep('lgStep3Ret');
+      document.getElementById('lgRetPwd').focus();
+    } else {
+      setBadge('3N',currentEmail);
+      showStep('lgStep3New');
+      document.getElementById('lgNewPwd').focus();
+    }
+  });
+
+  /* ── allow pressing Enter on OTP field ── */
+  document.getElementById('lgOtpInput').addEventListener('keydown',function(e){
+    if(e.key==='Enter') document.getElementById('lgVerifyOtp').click();
+  });
+
+  /* ── Password strength ── */
+  document.getElementById('lgNewPwd').addEventListener('input',function(){
+    const v=this.value;
+    let score=0;
+    if(v.length>=8) score++;
+    if(/[A-Z]/.test(v)) score++;
+    if(/[0-9]/.test(v)) score++;
+    if(/[^A-Za-z0-9]/.test(v)) score++;
+    const bar=document.getElementById('lgStrBar');
+    const txt=document.getElementById('lgStrText');
+    const colors=['#ef4444','#f97316','#eab308','#22c55e'];
+    const labels=['Weak','Fair','Good','Strong'];
+    if(!v){bar.style.width='0';txt.textContent='';return;}
+    bar.style.width=((score)/4*100)+'%';
+    bar.style.background=colors[score-1]||colors[0];
+    txt.textContent=labels[score-1]||labels[0];
+  });
+
+  /* ── Step 3A · set password (new user) ── */
+  document.getElementById('lgSetPwd').addEventListener('click', async function(){
+    setErr('lgErr3N','');
+    const pwd=document.getElementById('lgNewPwd').value;
+    const conf=document.getElementById('lgConfPwd').value;
+    if(pwd.length<8){setErr('lgErr3N','Password must be at least 8 characters.');return;}
+    if(pwd!==conf){setErr('lgErr3N','Passwords do not match.');return;}
+    const hashed=await hashPwd(pwd);
+    const db=usersDB();
+    db[currentEmail]={pwd:hashed,created:Date.now()};
+    saveUsers(db);
+    enterApp(currentEmail);
+  });
+
+  /* ── Step 3B · sign in (returning user) ── */
+  document.getElementById('lgSignIn').addEventListener('click', async function(){
+    setErr('lgErr3R','');
+    const pwd=document.getElementById('lgRetPwd').value;
+    if(!pwd){setErr('lgErr3R','Please enter your password.');return;}
+    const hashed=await hashPwd(pwd);
+    const db=usersDB();
+    if(!db[currentEmail]||db[currentEmail].pwd!==hashed){
+      setErr('lgErr3R','Incorrect password. Use the reset link below if you forgot it.');return;
+    }
+    enterApp(currentEmail);
+  });
+  document.getElementById('lgRetPwd').addEventListener('keydown',function(e){
+    if(e.key==='Enter') document.getElementById('lgSignIn').click();
+  });
+
+  /* ── Forgot password → re-verify via OTP ── */
+  document.getElementById('lgForgotPwd').addEventListener('click',function(){
+    const db=usersDB();
+    if(db[currentEmail]) delete db[currentEmail].pwd;
+    saveUsers(db);
+    setBadge('3N',currentEmail);
+    document.getElementById('lgNewPwd').value='';
+    document.getElementById('lgConfPwd').value='';
+    document.getElementById('lgStrBar').style.width='0';
+    document.getElementById('lgStrText').textContent='';
+    setErr('lgErr3N','');
+    showStep('lgStep3New');
+  });
+
+  /* ── Back to step 1 ── */
+  document.getElementById('lgBackTo1').addEventListener('click',function(){
+    clearInterval(otpTimerRef);
+    setErr('lgErr2','');
+    document.getElementById('lgOtpInput').value='';
+    showStep('lgStep1');
+    document.getElementById('lgEmailInput').focus();
+  });
+
+  /* ── Allow Enter on email input ── */
+  document.getElementById('lgEmailInput').addEventListener('keydown',function(e){
+    if(e.key==='Enter') document.getElementById('lgSendOtp').click();
+  });
+
+  /* ── Logout ── */
+  document.getElementById('logoutBtn').addEventListener('click',function(){
+    sessionStorage.removeItem(SS_KEY);
+    currentEmail='';
+    generatedOtp='';
+    document.getElementById('lgEmailInput').value='';
+    document.getElementById('lgOtpInput').value='';
+    document.getElementById('lgRetPwd').value='';
+    document.getElementById('lgNewPwd').value='';
+    document.getElementById('lgConfPwd').value='';
+    setErr('lgErr1','');setErr('lgErr2','');setErr('lgErr3N','');setErr('lgErr3R','');
+    showStep('lgStep1');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('topbarUser').style.display='none';
+    document.getElementById('genInfo').style.display='none';
+  });
+
+})();
 </script>
 </body>
 </html>
