@@ -310,6 +310,28 @@
     display:none;border-left:4px solid var(--green);
   }
   #loginToast.show{display:flex;align-items:center;gap:10px;animation:lgIn .2s ease-out;}
+  .xrate-sync{font-family:var(--mono);font-size:10px;cursor:pointer;border:1px solid var(--green);color:#3f7d1f;background:var(--green-tint);border-radius:4px;padding:2px 7px;vertical-align:middle;margin-left:4px;}
+  .inv-section-head{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);margin:12px 0 6px;border-bottom:1px solid var(--line);padding-bottom:4px;}
+  .inv-ship-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:12.5px;margin-bottom:10px;}
+  .inv-ship-row{display:flex;gap:8px;}
+  .inv-ship-k{color:var(--slate);font-weight:600;min-width:110px;}
+  .inv-ship-v{color:var(--ink);font-family:var(--mono);}
+  .pinv .ptrans{margin-top:7px;font-size:8.5pt;border:1px solid #bbb;border-radius:3px;padding:6px 8px;}
+  .pinv .ptrans .lbl{font-family:var(--mono);font-size:7pt;letter-spacing:.08em;color:#777;display:block;margin-bottom:3px;}
+  .pinv .ptrans-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;}
+  .pinv .ptrans-row{font-size:8pt;}
+  .pinv .ptrans-k{font-weight:600;color:#333;}
+  .shipments-wrap{padding:0 26px 60px;}
+  .ship-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px 20px;border-top:4px solid var(--green);}
+  .ship-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:4px;}
+  .ship-item{border:1px solid var(--line-soft);border-radius:7px;padding:13px 14px;margin-bottom:10px;}
+  .ship-item-hd{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .ship-lbl{font-weight:600;font-size:13px;flex:1;}
+  .ship-meta{font-size:11.5px;color:var(--slate);font-family:var(--mono);}
+  .ship-docs{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+  .ship-doc-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12.5px;}
+  .doc-chip{font-family:var(--mono);font-size:10px;background:var(--blue-tint);border:1px solid #c5d9ef;color:var(--blue);border-radius:4px;padding:2px 7px;}
+  .doc-dl{font-size:11px;color:var(--blue);cursor:pointer;text-decoration:underline;}
 </style>
 </head>
 <body>
@@ -459,6 +481,24 @@
         <label class="f"><span class="lab">PO <span class="mono">no.</span></span><input class="in code" data-path="order.po" value="4503518106/165"></label>
         <label class="f"><span class="lab">Invoice <span class="mono">no.</span></span><input class="in code" data-path="order.inv" value="2627JUN0008"></label>
       </div>
+      <div class="grid4" style="margin-top:12px;">
+        <label class="f"><span class="lab">Invoice date</span><input class="in code" data-path="order.date" value="15-June-2026"></label>
+        <label class="f"><span class="lab">USD → INR rate <button class="xrate-sync" id="syncInrBtn">↻ Sync INR rates</button></span><input class="in code" data-path="order.usdToInr" value="85.00"></label>
+        <label class="f"><span class="lab">Sample type</span><select class="in" data-path="order.sampleType"><option value="gratis">Gratis</option><option value="paid">Paid</option></select></label>
+        <label class="f"><span class="lab">Place of supply</span><input class="in" data-path="order.placeOfSupply" value="Mumbai, Maharashtra"></label>
+      </div>
+      <div class="grid4" style="margin-top:12px;">
+        <label class="f"><span class="lab">Transport mode</span><select class="in" data-path="order.shipTransport.mode"><option value="By Air">By Air</option><option value="By Sea">By Sea</option><option value="By Road">By Road</option><option value="By Courier">By Courier</option></select></label>
+        <label class="f"><span class="lab">Carrier / Airline</span><input class="in" data-path="order.shipTransport.carrier" value=""></label>
+        <label class="f"><span class="lab">AWB / LR no.</span><input class="in code" data-path="order.shipTransport.awb" value=""></label>
+        <label class="f"><span class="lab">AWB date</span><input class="in code" data-path="order.shipTransport.awbDate" value=""></label>
+      </div>
+      <div class="grid4" style="margin-top:12px;">
+        <label class="f"><span class="lab">Insurance company</span><input class="in" data-path="order.insurance.company" value=""></label>
+        <label class="f"><span class="lab">Policy no.</span><input class="in code" data-path="order.insurance.policy" value=""></label>
+        <label class="f"><span class="lab">Insurance amount</span><input class="in code" data-path="order.insurance.amount" value=""></label>
+        <div></div>
+      </div>
     </div>
 
     <div id="items"></div>
@@ -501,6 +541,10 @@
         <button data-action="mode" data-mode="gst">GST Tax Invoice · INR</button>
       </span>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span class="toggle" id="paidToggle" style="display:none;">
+          <button data-action="paid" data-paid="false" class="on">Gratis — Proforma</button>
+          <button data-action="paid" data-paid="true">Paid — Commercial</button>
+        </span>
         <span class="toggle" id="audToggle">
           <button data-action="aud" data-aud="customer" class="on">Customer</button>
           <button data-action="aud" data-aud="airline">Airline</button>
@@ -511,6 +555,19 @@
     </div>
     <div id="invArea"></div>
     <div class="note" id="invNote"></div>
+  </div>
+</div>
+<div class="shipments-wrap" id="shipmentsWrap">
+  <p class="eyebrow">Saved dispatches</p>
+  <div class="ship-card">
+    <div class="ship-top">
+      <div>
+        <div class="ttl" style="margin:0 0 4px;">Dispatch records</div>
+        <p class="hint" style="margin:0;">Save the current dispatch to keep a record. You can attach post-shipment documents (invoice PDFs, BL, customs clearance) per dispatch.</p>
+      </div>
+      <button class="btn green" id="saveDispatchBtn">💾 Save current dispatch</button>
+    </div>
+    <div id="dispatchList" style="margin-top:16px;"></div>
   </div>
 </div>
 </div><!-- /app-shell -->
@@ -553,11 +610,14 @@ function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1'};}
 function blankItem(){return {code:'',customer:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',unit:'Kg',rate:'16.67',rateInr:'47450',batches:[fb()]};}
 function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rateInr=rateInr;it.batches=batches;fill(it,code);return it;}
 let state={
-  order:{buyer:'Arxada AG',country:'Switzerland',po:'4503518106/165',inv:'2627JUN0008',date:'15-June-2026'},
+  order:{buyer:'Arxada AG',country:'Switzerland',po:'4503518106/165',inv:'2627JUN0008',date:'15-June-2026',
+    usdToInr:'85.00',placeOfSupply:'Mumbai, Maharashtra',sampleType:'gratis',
+    shipTransport:{mode:'By Air',carrier:'',awb:'',awbDate:''},
+    insurance:{company:'',policy:'',amount:''}},
   tax:{cgst:'0',sgst:'0',igst:'18'},
   items:[ mk('DETDA-Cl',[{batch:'DETDA-Cl/260609-020',qty:'0.100',bottleId:'b250',copies:'1'}],'16.67','47450') ],
 };
-let preview={i:0,b:0}, aud='customer', invMode='proforma';
+let preview={i:0,b:0}, aud='customer', invMode='proforma', invPaid=false;
 function setPath(p,v){const a=p.split('.');let o=state;for(let k=0;k<a.length-1;k++)o=o[isNaN(a[k])?a[k]:+a[k]];const l=a[a.length-1];o[isNaN(l)?l:+l]=v;}
 function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 const US=x=>(x*SCALE/10)+'px';
@@ -867,10 +927,28 @@ window.onafterprint=()=>document.body.classList.remove('printing');
 /* ---- document upload / paste test ---- */
 function loadTextIntoPreviewed(text,srcName){
   const it=state.items[preview.i]; if(!it){return;}
-  const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  it.precautions=lines.map(l=>{const m=l.match(/^(P[0-9+]+)\s+(.*)$/);return m?[m[1],m[2]]:['',l];});
+  // Extract H-statements: "H315 text", "H315: text", or "text (H315)"
+  const hzSet={}, prSet={};
+  const hPat1=/\b(H\d{3}(?:[+\d]+)*)[:\s]+([^()\n]{3,})/g;
+  const hPat2=/([^()\n]{3,})\s*\((H\d{3}(?:[+\d]+)*)\)/g;
+  const pPat1=/\b(P\d{3}(?:[+\d]+)*)[:\s]+([^()\n]{3,})/g;
+  const pPat2=/([^()\n]{3,})\s*\((P\d{3}(?:[+\d]+)*)\)/g;
+  let m;
+  while((m=hPat1.exec(text))!==null){const c=m[1].trim(),d=m[2].trim();if(!hzSet[c])hzSet[c]=d;}
+  while((m=hPat2.exec(text))!==null){const c=m[2].trim(),d=m[1].trim();if(!hzSet[c])hzSet[c]=d;}
+  while((m=pPat1.exec(text))!==null){const c=m[1].trim(),d=m[2].trim();if(!prSet[c])prSet[c]=d;}
+  while((m=pPat2.exec(text))!==null){const c=m[2].trim(),d=m[1].trim();if(!prSet[c])prSet[c]=d;}
+  const hz=Object.entries(hzSet).map(([c,d])=>[c,d]);
+  const pr=Object.entries(prSet).map(([c,d])=>[c,d]);
+  if(hz.length)it.hazards=hz;
+  if(pr.length)it.precautions=pr;
+  // Signal word
+  if(/\bdanger\b/i.test(text))it.signal='Danger';
+  else if(/\bwarning\b/i.test(text))it.signal='Warning';
   renderAll();
-  const st=document.getElementById('docStatus'); if(st)st.textContent=`Loaded ${lines.length} line(s)${srcName?' from '+srcName:''} into Item ${preview.i+1} precautionary statements.`;
+  const sig=it.signal||'not detected';
+  const st=document.getElementById('docStatus');
+  if(st)st.textContent=`Found ${hz.length} hazard + ${pr.length} precautionary statements [signal: ${sig}]${srcName?' from '+srcName:''} → Item ${preview.i+1}. Check and update as needed.`;
 }
 document.getElementById('docFile').addEventListener('change',function(e){
   const f=e.target.files[0]; if(!f)return;
