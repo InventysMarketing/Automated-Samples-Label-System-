@@ -827,19 +827,34 @@ function lineMetrics(it){
 function renderInvoice(){
   const area=document.getElementById('invArea'), note=document.getElementById('invNote');
   document.getElementById('audToggle').style.display=(invMode==='proforma')?'inline-flex':'none';
+  document.getElementById('paidToggle').style.display=(invMode==='proforma')?'inline-flex':'none';
   if(invMode==='proforma'){
+    const title=invPaid?'COMMERCIAL INVOICE':'PROFORMA INVOICE';
     let sub=0,rows='';
     state.items.forEach((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rate)||0,amt=m.totNet*rate;sub+=amt;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');
       rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(nameFor(it))}</div>${bb?`<div class="inv-sub">BATCH # ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rate" value="${esc(it.rate)}"></td><td class="r">${amt.toFixed(2)}</td></tr>`;});
-    area.innerHTML=`<table class="inv"><thead><tr><th style="width:34px;">#</th><th>Description</th><th class="r" style="width:110px;">Qty (Kg)</th><th class="r" style="width:130px;">Rate (USD/Kg)</th><th class="r" style="width:120px;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
+    area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--orange);margin-bottom:8px;">${title}</div>
+      <table class="inv"><thead><tr><th style="width:34px;">#</th><th>Description</th><th class="r" style="width:110px;">Qty (Kg)</th><th class="r" style="width:130px;">Rate (USD/Kg)</th><th class="r" style="width:120px;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="inv-totals"><div class="row grand"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div><div class="inv-words">${wordsUSD(sub)}</div></div>`;
-    note.innerHTML='<b>Proforma (USD)</b> — billed with the chosen name (Customer / Airline / Customs). Pricing = Qty × Rate; send your real rule to finalise.';
+    note.innerHTML=`<b>${title}</b> — billed with the chosen name (Customer / Airline / Customs). Pricing = Qty × Rate; send your real rule to finalise.`;
   } else {
     const cg=parseFloat(state.tax.cgst)||0, sg=parseFloat(state.tax.sgst)||0, ig=parseFloat(state.tax.igst)||0;
     let assess=0,rows='';
     state.items.forEach((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rateInr)||0,val=m.totNet*rate;assess+=val;const idm=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
       rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(it.customs||it.customer)}</div></td><td class="r">${esc(it.hs)}</td><td>${esc(idm)}</td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rateInr" value="${esc(it.rateInr)}"></td><td class="r">${val.toFixed(2)}</td></tr>`;});
     const cgA=assess*cg/100, sgA=assess*sg/100, igA=assess*ig/100, total=assess+cgA+sgA+igA;
+    const st=state.order.shipTransport||{}, ins=state.order.insurance||{};
+    const shipHtml=`<div class="inv-section-head">Shipping &amp; Insurance Details</div>
+      <div class="inv-ship-grid">
+        <div class="inv-ship-row"><span class="inv-ship-k">Transport Mode:</span><span class="inv-ship-v">${esc(st.mode||'')}</span></div>
+        <div class="inv-ship-row"><span class="inv-ship-k">Carrier/Airline:</span><span class="inv-ship-v">${esc(st.carrier||'—')}</span></div>
+        <div class="inv-ship-row"><span class="inv-ship-k">AWB/LR No.:</span><span class="inv-ship-v">${esc(st.awb||'—')}</span></div>
+        <div class="inv-ship-row"><span class="inv-ship-k">AWB Date:</span><span class="inv-ship-v">${esc(st.awbDate||'—')}</span></div>
+        <div class="inv-ship-row"><span class="inv-ship-k">Insurance Co.:</span><span class="inv-ship-v">${esc(ins.company||'—')}</span></div>
+        <div class="inv-ship-row"><span class="inv-ship-k">Policy No.:</span><span class="inv-ship-v">${esc(ins.policy||'—')}</span></div>
+        <div class="inv-ship-row"><span class="inv-ship-k">Ins. Amount:</span><span class="inv-ship-v">${esc(ins.amount||'—')}</span></div>
+        <div class="inv-ship-row"><span class="inv-ship-k">Place of Supply:</span><span class="inv-ship-v">${esc(state.order.placeOfSupply||'')}</span></div>
+      </div>`;
     area.innerHTML=`<table class="inv"><thead><tr><th>#</th><th>Description of Goods</th><th>HSN</th><th>Id. Mark</th><th class="r">Pkgs</th><th class="r">Net/Pkg</th><th class="r">Total Net (Kg)</th><th class="r">Rate (Rs/Kg)</th><th class="r">Value (Rs)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="inv-totals" style="gap:5px;">
         <div class="row"><span>Total Assessable Value</span><span>Rs ${assess.toFixed(2)}</span></div>
@@ -847,8 +862,9 @@ function renderInvoice(){
         <div class="row"><span>SGST <input class="inv-rate" style="width:46px;" data-tax="sgst" value="${esc(state.tax.sgst)}">%</span><span>Rs ${sgA.toFixed(2)}</span></div>
         <div class="row"><span>IGST <input class="inv-rate" style="width:46px;" data-tax="igst" value="${esc(state.tax.igst)}">%</span><span>Rs ${igA.toFixed(2)}</span></div>
         <div class="row grand"><span>Total Invoice Value</span><span>Rs ${total.toFixed(2)}</span></div>
-        <div class="inv-words">${wordsINR(total)}</div></div>`;
-    note.innerHTML='<b>GST Tax Invoice (INR)</b> — 100% EOU format from Arun: customs description, HSN, identification mark (LOT), CGST/SGST/IGST. Default IGST 18% (set to 0 for export under LUT).';
+        <div class="inv-words">${wordsINR(total)}</div></div>
+      ${shipHtml}`;
+    note.innerHTML='<b>TAX INVOICE (INR)</b> — GSTIN 27AABCI4415K1ZL · IEC 0306019141 · 100% EOU. Customs description, HSN, identification mark (LOT), CGST/SGST/IGST. Default IGST 18% (set to 0 for export under LUT).';
   }
 }
 
@@ -898,20 +914,34 @@ function partiesHTML(){return `<div class="parties"><div class="b"><div class="l
 function proformaPrint(){
   let sub=0;const rows=state.items.map((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rate)||0,amt=m.totNet*rate;sub+=amt;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');return `<tr><td class="r">${i+1}</td><td><b>${esc(nameFor(it))}</b>${bb?`<br><span style="font-family:var(--label-mono);font-size:7pt;">BATCH # ${esc(bb)}</span>`:''}<br><span style="font-family:var(--label-mono);font-size:7pt;">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</span></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r">${rate.toFixed(4)}</td><td class="r">${amt.toFixed(2)}</td></tr>`;}).join('');
   const al=aud.toUpperCase();
-  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t">PROFORMA INVOICE</div><p style="font-size:8pt;margin-top:5px;">${al} COPY</p><p style="font-size:8pt;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}
+  const invTitle=invPaid?'COMMERCIAL INVOICE':'PROFORMA INVOICE';
+  const gratisLine=(!invPaid)?`<p style="font-size:8pt;font-style:italic;color:#555;margin:3px 0 0;">Gratis / Research Sample — No commercial value</p>`:'';
+  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t">${invTitle}</div><p style="font-size:8pt;margin-top:5px;">${al} COPY</p><p style="font-size:8pt;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}${gratisLine}
   <table class="pinvt"><thead><tr><th style="width:6%;">#</th><th>Description</th><th class="r" style="width:13%;">Qty (Kg)</th><th class="r" style="width:15%;">Rate (USD/Kg)</th><th class="r" style="width:15%;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="ptot"><div class="r g"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div></div><div class="pwords">Amount in words: ${wordsUSD(sub)}</div>
-  <div class="pfoot">Bank: AXIS BANK LIMITED, Mumbai · SWIFT AXISINBB230 · A/C 915020013285666<br>Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.<br><br>For Inventys Research Company Pvt Ltd &nbsp;&nbsp;&nbsp;&nbsp; (Authorized Signatory)</div></div>`;
+  <div class="pfoot">Bank: AXIS BANK LIMITED, Mumbai · A/C 915020013285666 · SWIFT AXISINBB230 · IFSC UTIB0000230<br>IEC: 0306019141 · GSTIN: 27AABCI4415K1ZL<br>Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.<br><br>For Inventys Research Company Pvt Ltd &nbsp;&nbsp;&nbsp;&nbsp; (Authorized Signatory)</div></div>`;
 }
 function gstPrint(){
   const cg=parseFloat(state.tax.cgst)||0,sg=parseFloat(state.tax.sgst)||0,ig=parseFloat(state.tax.igst)||0;let assess=0;
   const rows=state.items.map((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rateInr)||0,val=m.totNet*rate;assess+=val;const idm=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;return `<tr><td class="r">${i+1}</td><td><b>${esc(it.customs||it.customer)}</b></td><td class="r">${esc(it.hs)}</td><td>${esc(idm)}</td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td class="r">${rate.toFixed(2)}</td><td class="r">${val.toFixed(2)}</td></tr>`;}).join('');
   const cgA=assess*cg/100,sgA=assess*sg/100,igA=assess*ig/100,total=assess+cgA+sgA+igA;
-  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t">TAX INVOICE (RUPEE TERMS)</div><p style="font-size:8pt;margin-top:5px;">100% Export Oriented Unit</p><p style="font-size:8pt;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}
+  const st=state.order.shipTransport||{}, ins=state.order.insurance||{};
+  const transSection=`<div class="ptrans"><span class="lbl">TRANSPORT &amp; INSURANCE</span><div class="ptrans-grid">
+    <div class="ptrans-row"><span class="ptrans-k">Mode: </span>${esc(st.mode||'')}</div>
+    <div class="ptrans-row"><span class="ptrans-k">Carrier: </span>${esc(st.carrier||'—')}</div>
+    <div class="ptrans-row"><span class="ptrans-k">AWB/LR No.: </span>${esc(st.awb||'—')}</div>
+    <div class="ptrans-row"><span class="ptrans-k">AWB Date: </span>${esc(st.awbDate||'—')}</div>
+    <div class="ptrans-row"><span class="ptrans-k">Insurance Co.: </span>${esc(ins.company||'—')}</div>
+    <div class="ptrans-row"><span class="ptrans-k">Policy No.: </span>${esc(ins.policy||'—')}</div>
+    <div class="ptrans-row"><span class="ptrans-k">Ins. Amount: </span>${esc(ins.amount||'—')}</div>
+    <div class="ptrans-row"><span class="ptrans-k">Place of Supply: </span>${esc(state.order.placeOfSupply||'')}</div>
+  </div></div>`;
+  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t" style="font-size:11pt;font-weight:700;">TAX INVOICE</div><p style="font-size:7pt;margin-top:3px;font-family:var(--label-mono);">GSTIN: 27AABCI4415K1ZL · IEC: 0306019141</p><p style="font-size:7pt;font-family:var(--label-mono);">100% Export Oriented Unit</p><p style="font-size:8pt;margin-top:5px;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}
   <table class="pinvt"><thead><tr><th style="width:5%;">#</th><th>Description of Goods</th><th style="width:10%;">HSN</th><th style="width:14%;">Id. Mark</th><th class="r" style="width:7%;">Pkgs</th><th class="r" style="width:9%;">Net/Pkg</th><th class="r" style="width:10%;">Total Net Kg</th><th class="r" style="width:11%;">Rate Rs/Kg</th><th class="r" style="width:12%;">Value Rs</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="ptot"><div class="r"><span>Total Assessable Value</span><span>Rs ${assess.toFixed(2)}</span></div><div class="r"><span>CGST (${cg}%)</span><span>Rs ${cgA.toFixed(2)}</span></div><div class="r"><span>SGST (${sg}%)</span><span>Rs ${sgA.toFixed(2)}</span></div><div class="r"><span>IGST (${ig}%)</span><span>Rs ${igA.toFixed(2)}</span></div><div class="r g"><span>Total Invoice Value</span><span>Rs ${total.toFixed(2)}</span></div></div>
   <div class="pwords">In words: ${wordsINR(total)}</div>
-  <div class="pfoot">Bank: PLEASE REMIT PAYMENT TO AXIS BANK LIMITED · SWIFT AXISINBB230 · A/C 915020013285666<br>Payment Terms: Net 60 days from date of invoice. Goods covered under Marine Sales Turnover policy.<br><br>For Inventys Research Company Pvt Ltd &nbsp;&nbsp;&nbsp;&nbsp; (Authorised Signatory)</div></div>`;
+  ${transSection}
+  <div class="pfoot">E.&amp; O.E. — Subject to Mumbai jurisdiction.<br>Bank: AXIS BANK LIMITED, Fort Branch, Mumbai · A/C 915020013285666 · SWIFT AXISINBB230 · IFSC UTIB0000230<br>Payment Terms: Net 60 days from date of invoice. Goods covered under Marine Sales Turnover policy.<br><br>For Inventys Research Company Pvt Ltd &nbsp;&nbsp;&nbsp;&nbsp; (Authorised Signatory)</div></div>`;
 }
 function printDoc(kind){
   let html='';
@@ -984,8 +1014,66 @@ document.body.addEventListener('click',e=>{
   else if(a==='silo'){const cur=state.items[preview.i]&&state.items[preview.i].batches[preview.b];if(cur)cur.bottleId=t.dataset.id;}
   else if(a==='add-stmt')state.items[i][kind].push(['','']);
   else if(a==='del-stmt')state.items[i][kind].splice(j,1);
+  // paid toggle
+  if(a==='paid'){invPaid=t.dataset.paid==='true';document.querySelectorAll('#paidToggle button').forEach(x=>x.classList.toggle('on',x.dataset.paid===(invPaid?'true':'false')));renderInvoice();return;}
+  // syncInrBtn handled via id click below
   renderAll();
 });
+document.getElementById('syncInrBtn').addEventListener('click',function(){
+  const rate=parseFloat(state.order.usdToInr)||85;
+  state.items.forEach(it=>{it.rateInr=(parseFloat(it.rate||0)*rate).toFixed(2);});
+  renderAll();
+  const st=document.getElementById('docStatus');if(st){st.textContent='INR rates synced at 1 USD = '+rate.toFixed(2)+' INR.';}
+});
+
+/* ---- Dispatch storage (Feature 6) ---- */
+const DS_KEY='rgt_dispatches_v1';
+function loadDispatches(){try{return JSON.parse(localStorage.getItem(DS_KEY)||'[]');}catch(e){return [];}}
+function saveDispatches(arr){try{localStorage.setItem(DS_KEY,JSON.stringify(arr));}catch(e){alert('Could not save to localStorage: '+e.message);}}
+function renderDispatches(){
+  const list=document.getElementById('dispatchList'); if(!list)return;
+  const arr=loadDispatches();
+  if(!arr.length){list.innerHTML='<p style="font-size:12px;color:var(--slate);">No saved dispatches yet.</p>';return;}
+  list.innerHTML=arr.map((d,idx)=>{
+    const docs=(d.docs||[]).map((doc,di)=>`<div class="ship-doc-row"><span class="doc-chip">${esc(doc.type||'FILE')}</span><span>${esc(doc.name)}</span><span class="ship-meta">${esc(doc.addedAt||'')}</span><a class="doc-dl" data-dispatch-action="dl-doc" data-idx="${idx}" data-di="${di}">Download</a></div>`).join('');
+    const items=(d.stateSnapshot&&d.stateSnapshot.items||[]).map(it=>`<span style="font-family:var(--mono);font-size:11px;">${esc(it.customer||it.customs||'')}</span>`).join(', ');
+    return `<div class="ship-item"><div class="ship-item-hd"><span class="ship-lbl">${esc(d.label)}</span><span class="ship-meta">${esc(d.savedAt)}</span>
+      <label class="btn tiny" style="cursor:pointer;">📎 Attach<input type="file" style="display:none;" data-dispatch-action="attach" data-idx="${idx}"></label>
+      <button class="btn tiny x" data-dispatch-action="del" data-idx="${idx}">🗑 Delete</button></div>
+      <div style="font-size:12px;color:var(--slate);">Items: ${items}</div>
+      ${docs?`<div class="ship-docs">${docs}</div>`:''}
+    </div>`;
+  }).join('');
+  // attach doc-download and delete handlers via delegation
+}
+function saveCurrentDispatch(){
+  const label=prompt('Label for this dispatch:',`${state.order.po||''}${state.order.buyer?' – '+state.order.buyer:''}`) ;
+  if(label===null)return; // cancelled
+  const arr=loadDispatches();
+  arr.unshift({id:Date.now(),savedAt:new Date().toLocaleString(),label:label||('Dispatch '+new Date().toLocaleDateString()),stateSnapshot:JSON.parse(JSON.stringify(state)),docs:[]});
+  saveDispatches(arr); renderDispatches();
+}
+function attachDocument(idx,file){
+  if(file.size>1048576){alert('Warning: file >1MB. Attaching anyway but may slow down the page.');}
+  const arr=loadDispatches(); if(!arr[idx])return;
+  const r=new FileReader(); r.onload=()=>{
+    arr[idx].docs=arr[idx].docs||[];
+    arr[idx].docs.push({name:file.name,type:file.name.split('.').pop().toUpperCase(),size:file.size,b64:r.result,addedAt:new Date().toLocaleString()});
+    saveDispatches(arr); renderDispatches();
+  }; r.readAsDataURL(file);
+}
+document.getElementById('saveDispatchBtn').addEventListener('click',saveCurrentDispatch);
+document.getElementById('dispatchList').addEventListener('click',function(e){
+  const t=e.target.closest('[data-dispatch-action]'); if(!t)return;
+  const act=t.dataset.dispatchAction, idx=+t.dataset.idx, di=+t.dataset.di;
+  if(act==='del'){if(!confirm('Delete this dispatch record?'))return;const arr=loadDispatches();arr.splice(idx,1);saveDispatches(arr);renderDispatches();}
+  if(act==='dl-doc'){const arr=loadDispatches();const doc=arr[idx]&&arr[idx].docs&&arr[idx].docs[di];if(!doc)return;const a=document.createElement('a');a.href=doc.b64;a.download=doc.name;a.click();}
+});
+document.getElementById('dispatchList').addEventListener('change',function(e){
+  const t=e.target; if(t.dataset.dispatchAction==='attach'){attachDocument(+t.dataset.idx,t.files[0]);t.value='';}
+});
+renderDispatches();
+
 renderAll();
 
 /* ── AUTH SYSTEM ─────────────────────────────────────────────── */
