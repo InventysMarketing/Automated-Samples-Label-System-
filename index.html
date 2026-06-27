@@ -332,6 +332,14 @@
   .ship-doc-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12.5px;}
   .doc-chip{font-family:var(--mono);font-size:10px;background:var(--blue-tint);border:1px solid #c5d9ef;color:var(--blue);border-radius:4px;padding:2px 7px;}
   .doc-dl{font-size:11px;color:var(--blue);cursor:pointer;text-decoration:underline;}
+  #previewModal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+  #previewModal.open{display:flex;}
+  #previewModal .pm-box{background:#fff;border-radius:10px;overflow:auto;max-width:92vw;max-height:88vh;padding:20px;position:relative;}
+  #previewModal .pm-toolbar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  #previewModal .pm-close{position:absolute;top:10px;right:12px;font-size:20px;cursor:pointer;color:var(--slate);background:none;border:none;font-family:var(--sans);}
+  .pm-btn{font-family:var(--sans);font-size:12.5px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:6px;padding:6px 12px;display:inline-flex;align-items:center;gap:6px;}
+  .pm-btn.primary{border-color:var(--blue);color:#fff;background:var(--blue);}
+  .stage{cursor:zoom-in;}
 </style>
 </head>
 <body>
@@ -456,11 +464,10 @@
   <div class="left">
     <p class="eyebrow">New dispatch · read &amp; fill from the SDS / CoA</p>
     <h2 class="section">Build a dispatch</h2>
-    <p class="hint">Pick a code to auto-fill names, CAS, HS and all SDS hazard data — every field stays editable so you can verify it. Click <b>Preview</b> on a batch to see its labels.</p>
+    <p class="hint">Pick a product code to auto-fill. Click <b>Preview</b> on a batch to see labels.</p>
 
     <div class="card accent-green">
-      <div class="ttl">📄 Test reading a document (optional)</div>
-      <p class="hint" style="margin:0 0 10px;">Upload an SDS/letter (.docx or .txt), or paste long text, then load it into the previewed item's precautionary statements to see how the outer label and font cope with lots of text.</p>
+      <div class="ttl">📄 Load SDS / document (optional)</div>
       <div class="grid2" style="align-items:start;">
         <div>
           <input type="file" id="docFile" accept=".docx,.txt" style="font-size:12px;">
@@ -499,6 +506,16 @@
         <label class="f"><span class="lab">Insurance amount</span><input class="in code" data-path="order.insurance.amount" value=""></label>
         <div></div>
       </div>
+      <div class="grid4" style="margin-top:12px;">
+        <label class="f" style="grid-column:span 2;"><span class="lab">Buyer full address</span><textarea class="in" data-path="order.buyerAddress" rows="2">Lonzastrasse 2, Visp-3930, Visp, Switzerland</textarea></label>
+        <label class="f"><span class="lab">Buyer contact</span><input class="in" data-path="order.buyerContact" value=""></label>
+        <label class="f"><span class="lab">Port of loading</span><input class="in" data-path="order.portOfLoading" value="Mumbai Airport, India"></label>
+      </div>
+      <div class="grid4" style="margin-top:12px;">
+        <label class="f" style="grid-column:span 2;"><span class="lab">Payment terms</span><input class="in" data-path="order.paymentTerms" value="Net 60 days from date of invoice."></label>
+        <label class="f"><span class="lab">Prep time</span><input class="in code" data-path="order.prepTime" value="04:00 PM"></label>
+        <label class="f"><span class="lab">Removal date &amp; time</span><input class="in code" data-path="order.removalDate" placeholder="date" value=""> <input class="in code" data-path="order.removalTime" style="margin-top:4px;" value="10:00 PM"></label>
+      </div>
     </div>
 
     <div id="items"></div>
@@ -510,6 +527,7 @@
       <div class="pv-head"><p class="eyebrow" style="margin:0;">Inner label · on the bottle</p><span class="pv-dim" id="innerDim">—</span></div>
       <p class="hint" id="innerSub" style="margin:6px 0 12px;">Your template + net weight, logo fixed.</p>
       <div class="stage" id="innerStage"></div>
+      <p style="font-size:11px;color:var(--slate);margin:4px 0 0;text-align:center;">Click label to zoom · Print button prints all copies</p>
       <div class="pv-actions">
         <button class="btn print tiny" data-action="print" data-kind="labels">🖶 Print / Save inner labels (packed A4)</button>
         <span class="estimate" id="innerEst"></span>
@@ -519,6 +537,7 @@
       <div class="pv-head"><p class="eyebrow" style="margin:0;">Outer label · on the carton</p><span class="pv-dim" id="outerDim">—</span></div>
       <p class="hint" style="margin:6px 0 12px;">Hazard / precautionary / storage / transport from the SDS. <b>Font auto-fits</b> the label.</p>
       <div class="stage" id="outerStage"></div>
+      <p style="font-size:11px;color:var(--slate);margin:4px 0 0;text-align:center;">Click label to zoom · Print button prints all copies</p>
       <div class="pv-actions">
         <button class="btn print tiny" data-action="print" data-kind="outer">🖶 Print / Save outer labels (packed A4)</button>
         <span class="estimate" id="outerEst"></span>
@@ -553,6 +572,7 @@
         <button class="btn print tiny" data-action="print" data-kind="invoice">🖶 Print / Save invoice (PDF)</button>
       </div>
     </div>
+    <p style="font-size:11px;color:var(--slate);margin:0 0 4px;">Click anywhere in the invoice table to zoom &amp; print</p>
     <div id="invArea"></div>
     <div class="note" id="invNote"></div>
   </div>
@@ -568,6 +588,18 @@
       <button class="btn green" id="saveDispatchBtn">💾 Save current dispatch</button>
     </div>
     <div id="dispatchList" style="margin-top:16px;"></div>
+  </div>
+</div>
+<div id="previewModal">
+  <div class="pm-toolbar">
+    <button class="pm-btn" id="pmZoomOut">− Zoom out</button>
+    <span id="pmZoomLabel" style="font-family:var(--mono);font-size:12px;color:#ccc;min-width:50px;text-align:center;">100%</span>
+    <button class="pm-btn" id="pmZoomIn">+ Zoom in</button>
+    <button class="pm-btn primary" id="pmPrint">🖶 Print</button>
+    <button class="pm-btn" id="pmClose">✕ Close</button>
+  </div>
+  <div class="pm-box" id="pmBox">
+    <div id="pmContent" style="transform-origin:top left;"></div>
   </div>
 </div>
 </div><!-- /app-shell -->
@@ -612,6 +644,9 @@ function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rate
 let state={
   order:{buyer:'Arxada AG',country:'Switzerland',po:'4503518106/165',inv:'2627JUN0008',date:'15-June-2026',
     usdToInr:'85.00',placeOfSupply:'Mumbai, Maharashtra',sampleType:'gratis',
+    buyerAddress:'Lonzastrasse 2, Visp-3930, Visp, Switzerland',buyerContact:'',
+    portOfLoading:'Mumbai Airport, India',paymentTerms:'Net 60 days from date of invoice.',
+    prepTime:'04:00 PM',removalDate:'',removalTime:'10:00 PM',
     shipTransport:{mode:'By Air',carrier:'',awb:'',awbDate:''},
     insurance:{company:'',policy:'',amount:''}},
   tax:{cgst:'0',sgst:'0',igst:'18'},
@@ -836,7 +871,7 @@ function renderInvoice(){
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--orange);margin-bottom:8px;">${title}</div>
       <table class="inv"><thead><tr><th style="width:34px;">#</th><th>Description</th><th class="r" style="width:110px;">Qty (Kg)</th><th class="r" style="width:130px;">Rate (USD/Kg)</th><th class="r" style="width:120px;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="inv-totals"><div class="row grand"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div><div class="inv-words">${wordsUSD(sub)}</div></div>`;
-    note.innerHTML=`<b>${title}</b> — billed with the chosen name (Customer / Airline / Customs). Pricing = Qty × Rate; send your real rule to finalise.`;
+    note.innerHTML=`<b>${title}</b> — billed with the chosen name (Customer / Airline / Customs). Pricing = Qty × Rate.`;
   } else {
     const cg=parseFloat(state.tax.cgst)||0, sg=parseFloat(state.tax.sgst)||0, ig=parseFloat(state.tax.igst)||0;
     let assess=0,rows='';
@@ -857,6 +892,7 @@ function renderInvoice(){
       </div>`;
     area.innerHTML=`<table class="inv"><thead><tr><th>#</th><th>Description of Goods</th><th>HSN</th><th>Id. Mark</th><th class="r">Pkgs</th><th class="r">Net/Pkg</th><th class="r">Total Net (Kg)</th><th class="r">Rate (Rs/Kg)</th><th class="r">Value (Rs)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="inv-totals" style="gap:5px;">
+        <div class="row" style="background:var(--blue-tint);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--mono);color:#1d4e7a;font-weight:600;"><span>Exchange Rate</span><span>1 USD = ₹${(parseFloat(state.order.usdToInr)||85).toFixed(2)} (as entered)</span></div>
         <div class="row"><span>Total Assessable Value</span><span>Rs ${assess.toFixed(2)}</span></div>
         <div class="row"><span>CGST <input class="inv-rate" style="width:46px;" data-tax="cgst" value="${esc(state.tax.cgst)}">%</span><span>Rs ${cgA.toFixed(2)}</span></div>
         <div class="row"><span>SGST <input class="inv-rate" style="width:46px;" data-tax="sgst" value="${esc(state.tax.sgst)}">%</span><span>Rs ${sgA.toFixed(2)}</span></div>
@@ -864,7 +900,7 @@ function renderInvoice(){
         <div class="row grand"><span>Total Invoice Value</span><span>Rs ${total.toFixed(2)}</span></div>
         <div class="inv-words">${wordsINR(total)}</div></div>
       ${shipHtml}`;
-    note.innerHTML='<b>TAX INVOICE (INR)</b> — GSTIN 27AABCI4415K1ZL · IEC 0306019141 · 100% EOU. Customs description, HSN, identification mark (LOT), CGST/SGST/IGST. Default IGST 18% (set to 0 for export under LUT).';
+    note.innerHTML='<b>TAX INVOICE (INR)</b> — GSTIN 27AABCI4415K1ZL · IEC 0306019141 · 100% Export Oriented Unit. Customs description, HSN code, identification mark, CGST/SGST/IGST. Set IGST to 0 for exports under LUT.';
   }
 }
 
@@ -922,26 +958,173 @@ function proformaPrint(){
   <div class="pfoot">Bank: AXIS BANK LIMITED, Mumbai · A/C 915020013285666 · SWIFT AXISINBB230 · IFSC UTIB0000230<br>IEC: 0306019141 · GSTIN: 27AABCI4415K1ZL<br>Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.<br><br>For Inventys Research Company Pvt Ltd &nbsp;&nbsp;&nbsp;&nbsp; (Authorized Signatory)</div></div>`;
 }
 function gstPrint(){
-  const cg=parseFloat(state.tax.cgst)||0,sg=parseFloat(state.tax.sgst)||0,ig=parseFloat(state.tax.igst)||0;let assess=0;
-  const rows=state.items.map((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rateInr)||0,val=m.totNet*rate;assess+=val;const idm=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;return `<tr><td class="r">${i+1}</td><td><b>${esc(it.customs||it.customer)}</b></td><td class="r">${esc(it.hs)}</td><td>${esc(idm)}</td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td class="r">${rate.toFixed(2)}</td><td class="r">${val.toFixed(2)}</td></tr>`;}).join('');
+  const cg=parseFloat(state.tax.cgst)||0,sg=parseFloat(state.tax.sgst)||0,ig=parseFloat(state.tax.igst)||0;
+  let assess=0;
+  const rows=state.items.map((it,i)=>{
+    const m=lineMetrics(it),rate=parseFloat(it.rateInr)||0,val=m.totNet*rate;assess+=val;
+    const batchNos=it.batches.map(b=>b.batch).filter(Boolean).join(', ');
+    const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
+    const rateUSD=parseFloat(it.rate)||0;
+    const idMark=`PO No : ${esc(state.order.po)}\nPO Date : ${esc(state.order.date||'—')}`;
+    return `<tr>
+      <td class="r" style="width:4%;">${i+1}</td>
+      <td style="width:22%;">
+        <b>${esc(it.customs||it.customer)}</b><br>
+        <span style="font-size:7.5pt;color:#333;">Consignee: ${esc(state.order.buyer)}, ${esc(state.order.country)}</span><br>
+        <span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}</span>
+      </td>
+      <td style="width:9%;">${esc(it.hs)}</td>
+      <td style="width:13%;white-space:pre-line;font-size:7.5pt;">${esc(idMark)}\nBatch: ${esc(batchNos)}</td>
+      <td class="r" style="width:6%;">${m.pkgs}</td>
+      <td class="r" style="width:9%;">${perPkg.toFixed(3)}</td>
+      <td class="r" style="width:9%;">${m.totNet.toFixed(3)}</td>
+      <td class="r" style="width:11%;">${rate.toFixed(2)}</td>
+      <td class="r" style="width:12%;">${val.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
   const cgA=assess*cg/100,sgA=assess*sg/100,igA=assess*ig/100,total=assess+cgA+sgA+igA;
   const st=state.order.shipTransport||{}, ins=state.order.insurance||{};
-  const transSection=`<div class="ptrans"><span class="lbl">TRANSPORT &amp; INSURANCE</span><div class="ptrans-grid">
-    <div class="ptrans-row"><span class="ptrans-k">Mode: </span>${esc(st.mode||'')}</div>
-    <div class="ptrans-row"><span class="ptrans-k">Carrier: </span>${esc(st.carrier||'—')}</div>
-    <div class="ptrans-row"><span class="ptrans-k">AWB/LR No.: </span>${esc(st.awb||'—')}</div>
-    <div class="ptrans-row"><span class="ptrans-k">AWB Date: </span>${esc(st.awbDate||'—')}</div>
-    <div class="ptrans-row"><span class="ptrans-k">Insurance Co.: </span>${esc(ins.company||'—')}</div>
-    <div class="ptrans-row"><span class="ptrans-k">Policy No.: </span>${esc(ins.policy||'—')}</div>
-    <div class="ptrans-row"><span class="ptrans-k">Ins. Amount: </span>${esc(ins.amount||'—')}</div>
-    <div class="ptrans-row"><span class="ptrans-k">Place of Supply: </span>${esc(state.order.placeOfSupply||'')}</div>
-  </div></div>`;
-  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t" style="font-size:11pt;font-weight:700;">TAX INVOICE</div><p style="font-size:7pt;margin-top:3px;font-family:var(--label-mono);">GSTIN: 27AABCI4415K1ZL · IEC: 0306019141</p><p style="font-size:7pt;font-family:var(--label-mono);">100% Export Oriented Unit</p><p style="font-size:8pt;margin-top:5px;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}
-  <table class="pinvt"><thead><tr><th style="width:5%;">#</th><th>Description of Goods</th><th style="width:10%;">HSN</th><th style="width:14%;">Id. Mark</th><th class="r" style="width:7%;">Pkgs</th><th class="r" style="width:9%;">Net/Pkg</th><th class="r" style="width:10%;">Total Net Kg</th><th class="r" style="width:11%;">Rate Rs/Kg</th><th class="r" style="width:12%;">Value Rs</th></tr></thead><tbody>${rows}</tbody></table>
-  <div class="ptot"><div class="r"><span>Total Assessable Value</span><span>Rs ${assess.toFixed(2)}</span></div><div class="r"><span>CGST (${cg}%)</span><span>Rs ${cgA.toFixed(2)}</span></div><div class="r"><span>SGST (${sg}%)</span><span>Rs ${sgA.toFixed(2)}</span></div><div class="r"><span>IGST (${ig}%)</span><span>Rs ${igA.toFixed(2)}</span></div><div class="r g"><span>Total Invoice Value</span><span>Rs ${total.toFixed(2)}</span></div></div>
-  <div class="pwords">In words: ${wordsINR(total)}</div>
-  ${transSection}
-  <div class="pfoot">E.&amp; O.E. — Subject to Mumbai jurisdiction.<br>Bank: AXIS BANK LIMITED, Fort Branch, Mumbai · A/C 915020013285666 · SWIFT AXISINBB230 · IFSC UTIB0000230<br>Payment Terms: Net 60 days from date of invoice. Goods covered under Marine Sales Turnover policy.<br><br>For Inventys Research Company Pvt Ltd &nbsp;&nbsp;&nbsp;&nbsp; (Authorised Signatory)</div></div>`;
+  const xrate=parseFloat(state.order.usdToInr)||85;
+  let totUSD=0; state.items.forEach(it=>{const m=lineMetrics(it);totUSD+=m.totNet*(parseFloat(it.rate)||0);});
+  const ratePerKgUSD=state.items.length?parseFloat(state.items[0].rate)||0:0;
+
+  return `<div class="pinv" style="font-size:9pt;">
+  <!-- Header -->
+  <table style="width:100%;border-collapse:collapse;border:1px solid #666;margin-bottom:0;">
+    <tr>
+      <td style="width:65%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;">
+        <div style="font-size:10pt;font-weight:700;letter-spacing:.02em;">INVENTYS RESEARCH COMPANY PRIVATE LIMITED</div>
+        <div style="font-size:8pt;font-weight:600;color:#333;">(100% Export Oriented Unit)</div>
+        <div style="font-size:7.5pt;margin-top:3px;line-height:1.4;color:#444;">
+          Regd. Off: 901C Tower 2, One International Centre, Senapati Bapat Marg, Prabhadevi, Mumbai 400013. INDIA.<br>
+          Phone: +91-22-71400200 &nbsp; Fax: +91-22-71400299 &nbsp; E-mail: commercial@inventys.in<br>
+          Factory: K-38, Five Star Industrial Area, MIDC, Butibori, Nagpur-441122<br>
+          Phone: +91-9619666338/39/40
+        </div>
+        <div style="font-size:7.5pt;margin-top:5px;line-height:1.4;color:#444;">
+          <b>Superintendent, Goods &amp; Service Tax Range II</b>, MIDC Main Road, CFC Building, MIDC, Butibori, District Nagpur, Nagpur-441122.<br>
+          Division: Hingna Butibori, Commissionerate Nagpur-I
+        </div>
+        <div style="font-size:7.5pt;margin-top:5px;line-height:1.55;">
+          <b>GSTIN No.</b> 27AABCI4415K1ZL &nbsp;|&nbsp; <b>IEC No.</b> 0306019141 &nbsp;|&nbsp; Udyam Reg. UDYAM-MH-19-0033403
+        </div>
+      </td>
+      <td style="width:35%;padding:6px 8px;vertical-align:top;text-align:center;">
+        <div style="font-size:11pt;font-weight:700;letter-spacing:.04em;border-bottom:1.5px solid #333;padding-bottom:4px;margin-bottom:6px;">TAX INVOICE</div>
+        <div style="font-size:8pt;color:#555;">(Rupee Terms)</div>
+        <div style="font-size:8pt;margin-top:5px;text-align:left;line-height:1.6;">
+          <b>Invoice No:</b> ${esc(state.order.inv)}<br>
+          <b>Invoice Date:</b> ${esc(state.order.date)}<br>
+          <b>PO No:</b> ${esc(state.order.po)}<br>
+          <b>Place of Supply:</b> ${esc(state.order.placeOfSupply||'Mumbai, Maharashtra')}
+        </div>
+        <div style="margin-top:8px;border-top:1px solid #ccc;padding-top:6px;font-size:7.5pt;color:#555;">Authenticated By</div>
+        <div style="height:28px;"></div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Terms + Dates + Buyer -->
+  <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;">
+    <tr>
+      <td style="width:40%;padding:5px 7px;border-right:1px solid #666;vertical-align:top;font-size:7.5pt;">
+        <b>Terms:</b>
+        <ol style="margin:3px 0 0 14px;padding:0;line-height:1.5;">
+          <li>Payment by crossed demand draft, cheque or by RTGS as per invoice terms.</li>
+          <li>Interest @24% will be levied if payment not received within 30 days from receipt of material.</li>
+          <li>All claims must be notified in writing within 7 days.</li>
+          <li>Our risk responsibility ceases on dispatch of goods from our godown.</li>
+          <li>In case of legal dispute the forum shall always be Mumbai.</li>
+        </ol>
+        <div style="margin-top:4px;font-weight:700;">E &amp; O. E.</div>
+      </td>
+      <td style="width:30%;padding:5px 7px;border-right:1px solid #666;vertical-align:top;font-size:7.5pt;">
+        <div><b>Date &amp; Time of Preparation:</b><br>${esc(state.order.date)} ${esc(state.order.prepTime||'04:00 PM')}</div>
+        <div style="margin-top:5px;"><b>Date &amp; Time of Removal:</b><br>${esc(state.order.removalDate||state.order.date)} ${esc(state.order.removalTime||'10:00 PM')}</div>
+      </td>
+      <td style="width:30%;padding:5px 7px;vertical-align:top;font-size:7.5pt;">
+        <b>Buyer:</b><br>
+        <b>${esc(state.order.buyer)}</b><br>
+        ${esc(state.order.buyerAddress||state.order.country)}<br>
+        ${state.order.buyerContact?`Contact: ${esc(state.order.buyerContact)}<br>`:''}
+        ${state.order.portOfLoading?`<b>Port of Loading:</b> ${esc(state.order.portOfLoading)}`:'Port of Loading: Mumbai Airport, India'}
+      </td>
+    </tr>
+  </table>
+
+  <!-- Items table -->
+  <table class="pinvt" style="margin-top:0;border-top:none;">
+    <thead>
+      <tr style="background:#dce6f0;">
+        <th style="width:4%;">No.</th>
+        <th style="width:22%;">Description of Goods</th>
+        <th style="width:9%;">Chapter No. &amp; HSN Code</th>
+        <th style="width:13%;">Identification Mark</th>
+        <th class="r" style="width:6%;">No. of Pkg.</th>
+        <th class="r" style="width:9%;">Net Wt / Pkg. Kg</th>
+        <th class="r" style="width:9%;">Total Net Wt Kg</th>
+        <th class="r" style="width:11%;">Rate Per Kg Rs.</th>
+        <th class="r" style="width:12%;">Value in Rs.</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr style="font-weight:700;background:#f5f5f5;">
+        <td></td><td style="font-size:7.5pt;">Total</td><td></td><td></td>
+        <td class="r">${state.items.reduce((s,it)=>s+lineMetrics(it).pkgs,0)}</td>
+        <td></td>
+        <td class="r">${state.items.reduce((s,it)=>s+lineMetrics(it).totNet,0).toFixed(3)}</td>
+        <td></td><td class="r">${assess.toFixed(2)}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- Totals + Bank + Transport -->
+  <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;">
+    <tr>
+      <td style="width:55%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;font-size:7.5pt;">
+        <div><b>Bank Details</b></div>
+        <div style="margin-top:3px;line-height:1.5;">
+          PLEASE REMIT PAYMENT TO<br>
+          <b>AXIS BANK LIMITED</b><br>
+          Fortune 2000, Ground Floor, Bharat Nagar, Bandra Kurla Complex, Bandra (East) Mumbai, Maharashtra-400051, INDIA<br>
+          For credit to: <b>INVENTYS RESEARCH COMPANY PVT. LTD.</b><br>
+          <b>SWIFT CODE:</b> AXISINBB230 &nbsp; <b>A/C No.:</b> 915020013285666 &nbsp; <b>IFSC:</b> UTIB0001543
+        </div>
+        <div style="margin-top:6px;border-top:1px dashed #ccc;padding-top:5px;">
+          <b>Mode of Transport / Vehicle No:</b> ${esc(st.mode||'')} ${st.awb?'/ AWB: '+esc(st.awb):''}<br>
+          <b>Name of Transport / Carrier:</b> ${esc(st.carrier||'')} ${st.awbDate?'· Date: '+esc(st.awbDate):''}<br>
+          <b>Exchange Rate:</b> 1 USD = Rs. ${xrate.toFixed(2)} w.e.f. ${esc(state.order.date||'—')}<br>
+          ${ins.company||ins.policy?`<b>Insurance:</b> ${esc(ins.company)} &nbsp; Policy No: ${esc(ins.policy)} &nbsp; Amount: ${esc(ins.amount)}`:''}
+        </div>
+        <div style="margin-top:4px;font-size:7pt;color:#555;">Remark: ${ins.policy?`Goods covered under ${esc(ins.company)} Marine Sales Turnover Insurance Policy No. ${esc(ins.policy)}.`:''}</div>
+      </td>
+      <td style="width:45%;padding:6px 8px;vertical-align:top;font-size:8pt;">
+        <table style="width:100%;font-size:8pt;">
+          <tr><td>Total Assessable Value in Rs.</td><td class="r"><b>Rs. ${assess.toFixed(2)}</b></td></tr>
+          <tr><td>CGST (${cg}%)</td><td class="r">Rs. ${cgA.toFixed(2)}</td></tr>
+          <tr><td>SGST (${sg}%)</td><td class="r">Rs. ${sgA.toFixed(2)}</td></tr>
+          <tr><td>IGST (${ig}%)</td><td class="r">Rs. ${igA.toFixed(2)}</td></tr>
+          ${ins.amount?`<tr><td>Insurance</td><td class="r">Rs. ${esc(ins.amount)}</td></tr>`:''}
+          <tr style="font-weight:700;border-top:1.5px solid #333;"><td>Total Invoice Value in Rs.</td><td class="r">Rs. ${total.toFixed(2)}</td></tr>
+        </table>
+        <div style="margin-top:6px;font-size:7.5pt;border-top:1px solid #ccc;padding-top:4px;">
+          <b>In words:</b> ${wordsINR(total)}
+        </div>
+        <div style="margin-top:6px;font-size:7.5pt;border-top:1px solid #ccc;padding-top:4px;">
+          <b>USD equivalent:</b> Rate/Kg USD ${ratePerKgUSD.toFixed(2)} &nbsp;|&nbsp; Total USD ${totUSD.toFixed(2)}<br>
+          Payment Terms: Net 60 days from date of invoice.<br>
+          ${esc(state.order.paymentTerms||'')}
+        </div>
+        <div style="margin-top:20px;text-align:center;border-top:1px solid #999;padding-top:4px;font-size:7.5pt;">
+          For <b>Inventys Research Company Pvt. Ltd.</b><br><br><br>
+          Authorised Signatory
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>`;
 }
 function printDoc(kind){
   let html='';
@@ -992,12 +1175,17 @@ document.getElementById('docFile').addEventListener('change',function(e){
 
 function renderAll(){renderForm();renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
 document.body.addEventListener('input',e=>{const el=e.target;
-  if(el.dataset.tax){state.tax[el.dataset.tax]=el.value;renderInvoice();return;}
-  if(el.dataset.path){setPath(el.dataset.path,el.value);renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
+  if(el.dataset.tax){state.tax[el.dataset.tax]=el.value;return;} // no re-render while typing
+  if(el.dataset.path){
+    setPath(el.dataset.path,el.value);
+    if(!el.closest('#invArea')){renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
+  }
 });
 document.body.addEventListener('change',e=>{const el=e.target;
   if(el.dataset.role==='code'){fill(state.items[+el.dataset.i],el.value);renderAll();return;}
+  if(el.dataset.tax){renderInvoice();return;}  // re-render on blur for tax fields
   if(el.tagName==='SELECT'&&el.dataset.path){setPath(el.dataset.path,el.value);renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
+  if(el.dataset.path&&el.closest('#invArea')){renderInvoice();} // re-render invoice on blur for inv-rate fields
 });
 document.body.addEventListener('click',e=>{
   const t=e.target.closest('[data-action]'); if(!t)return;
@@ -1073,6 +1261,48 @@ document.getElementById('dispatchList').addEventListener('change',function(e){
   const t=e.target; if(t.dataset.dispatchAction==='attach'){attachDocument(+t.dataset.idx,t.files[0]);t.value='';}
 });
 renderDispatches();
+
+/* ── preview modal (click-to-zoom) ── */
+(function(){
+  const modal=document.getElementById('previewModal');
+  const box=document.getElementById('pmBox');
+  const content=document.getElementById('pmContent');
+  const zoomLabel=document.getElementById('pmZoomLabel');
+  let zoom=1, printKind='';
+
+  function setZoom(z){zoom=Math.max(.25,Math.min(4,z));content.style.transform=`scale(${zoom})`;content.style.width=(100/zoom)+'%';zoomLabel.textContent=Math.round(zoom*100)+'%';}
+  function open(html, kind){printKind=kind;content.innerHTML=html;modal.classList.add('open');setZoom(1);setTimeout(()=>box.scrollTo(0,0),50);}
+  function close(){modal.classList.remove('open');content.innerHTML='';}
+
+  document.getElementById('pmZoomIn').onclick=()=>setZoom(zoom*1.25);
+  document.getElementById('pmZoomOut').onclick=()=>setZoom(zoom/1.25);
+  document.getElementById('pmClose').onclick=close;
+  document.getElementById('pmPrint').onclick=()=>{ if(printKind) printDoc(printKind); };
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+
+  /* clicking on a stage opens the modal */
+  document.getElementById('innerStage').addEventListener('click',function(){
+    const it=state.items[preview.i],b=it&&it.batches[preview.b]; if(!b)return;
+    const bo=bottle(b.bottleId);
+    const html=`<div class="label" style="width:${bo.w*SCALE*1.5}px;height:${bo.h*SCALE*1.5}px;">${innerBody(it,b,bo.tier,x=>(x*SCALE*1.5/10)+'px')}</div>`;
+    open(html,'labels');
+  });
+  document.getElementById('outerStage').addEventListener('click',function(){
+    const it=state.items[preview.i],b=it&&it.batches[preview.b]; if(!b)return;
+    const bo=bottle(b.bottleId),s=fitScale(it,b);
+    const sc=SCALE*1.5;
+    const html=`<div class="label" style="width:${bo.ow*sc}px;height:${bo.oh*sc}px;">${outerBody(it,b,state.order.po,x=>(x*s*sc/10)+'px')}</div>`;
+    open(html,'outer');
+  });
+  /* invoice zoom: clicking #invArea opens a zoomed printable view */
+  document.getElementById('invArea').addEventListener('click',function(e){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return; // don't intercept edits
+    const html=invMode==='proforma'?proformaPrint():gstPrint();
+    open(`<div style="width:190mm;padding:5mm;box-sizing:border-box;">${html}</div>`,'invoice');
+  });
+  window._openPreviewModal=open;
+})();
 
 renderAll();
 
