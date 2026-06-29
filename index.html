@@ -5,15 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reagent — Inventys dispatch & label console</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root{
     /* brand palette pulled from the Inventys logo */
     --blue:#2f5d8e; --green:#6fae3d; --orange:#ec6e1f; --yellow:#e8a81d;
     --blue-tint:#e7eef5; --green-tint:#eef6e6; --orange-tint:#fdeee2;
-    --ink:#1b2533; --slate:#46566b; --muted:#8593a8;
+    --ink:#0b0f17; --slate:#3a4860; --muted:#75839a;
     --paper:#eef1f5; --surface:#fff; --line:#d6dde7; --line-soft:#e7ebf1;
     --azure:#1b6ca8; --hazard:#c2410c;
     --sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --serif:Georgia,"Iowan Old Style","Times New Roman",Times,serif;
     --mono:ui-monospace,"Cascadia Code","Consolas","SF Mono",Menlo,monospace;
     --label-sans:"Inter","Segoe UI",Helvetica,Arial,sans-serif;
     --label-mono:ui-monospace,"Consolas","SF Mono",Menlo,monospace;
@@ -23,8 +25,8 @@
   body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;}
   .topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--ink);color:#e6ecf3;border-bottom:4px solid;border-image:linear-gradient(90deg,var(--blue),var(--green) 45%,var(--yellow) 70%,var(--orange)) 1;}
   .brand{display:flex;align-items:baseline;gap:9px;}
-  .brand .mark{font-family:var(--mono);font-weight:700;letter-spacing:.16em;font-size:15px;background:linear-gradient(90deg,#7fb6e6,var(--green),var(--orange));-webkit-background-clip:text;background-clip:text;color:transparent;}
-  .brand .sub{font-size:11.5px;color:#9fb0c2;}
+  .brand .mark{font-family:var(--serif);font-weight:700;font-style:italic;letter-spacing:.01em;font-size:19px;background:linear-gradient(90deg,#9cc7ee,var(--green),var(--orange));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .brand .sub{font-family:var(--serif);font-size:12.5px;color:#aebccd;}
   .tag{font-family:var(--mono);font-size:10px;letter-spacing:.12em;padding:2px 7px;border:1px solid #3a4861;border-radius:3px;color:#9fb0c2;text-transform:uppercase;}
   .outs{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11px;color:#8ea0b4;}
   .outs b{color:#cdd8e3;font-weight:600;}
@@ -34,13 +36,13 @@
   .right{border-left:1px solid var(--line);background:#f2f5f8;padding:22px 20px 36px;}
   @media (max-width:1000px){ .right{border-left:none;border-top:1px solid var(--line);} }
   .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);margin:0 0 6px;}
-  h2.section{font-size:16px;margin:0 0 2px;letter-spacing:-.01em;}
+  h2.section{font-family:var(--serif);font-weight:700;font-size:21px;color:#000;margin:0 0 3px;letter-spacing:-.01em;}
   .hint{color:var(--slate);font-size:12.5px;margin:0 0 16px;}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:18px;}
   .card.accent-blue{border-left:4px solid var(--blue);}
   .card.accent-green{border-left:4px solid var(--green);}
   .card.accent-orange{border-left:4px solid var(--orange);}
-  .card .ttl{font-weight:600;font-size:13px;margin-bottom:12px;}
+  .card .ttl{font-family:var(--serif);font-weight:700;font-size:15px;color:#000;margin-bottom:12px;}
   .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
   .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -211,11 +213,21 @@
   }
   .lg-logo-sep{width:1px;height:24px;background:rgba(255,255,255,.25);}
   .lg-logo-sub{font-size:12px;color:rgba(255,255,255,.7);line-height:1.3;}
-  .lg-title{font-size:20px;font-weight:700;margin:0 0 4px;letter-spacing:-.02em;}
-  .lg-subtitle{font-size:13px;color:rgba(255,255,255,.7);margin:0;}
+  .lg-title{font-family:var(--serif);font-size:25px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em;}
+  .lg-subtitle{font-family:var(--serif);font-style:italic;font-size:14px;color:rgba(255,255,255,.82);margin:0;}
   .lg-body{padding:28px 32px 32px;}
   .lg-step{display:none;}
   .lg-step.active{display:block;animation:lgIn .18s ease-out;}
+  .lg-view{display:none;}
+  .lg-view.active{display:block;animation:lgIn .18s ease-out;}
+  .lg-links{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;}
+  .lg-link{background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px;font-family:var(--serif);font-style:italic;padding:0;text-decoration:none;}
+  .lg-link:hover{text-decoration:underline;}
+  .lg-link.strong{font-weight:700;font-style:normal;}
+  .lg-substep{display:none;}
+  .lg-substep.active{display:block;}
+  .lg-sectitle{font-family:var(--serif);font-weight:700;font-size:17px;color:#000;margin:0 0 4px;}
+  .lg-secnote{font-size:12.5px;color:var(--slate);margin:0 0 18px;line-height:1.45;}
   .lg-label{display:block;font-size:11.5px;font-weight:600;color:var(--slate);margin-bottom:6px;letter-spacing:.02em;text-transform:uppercase;}
   .lg-input{
     width:100%;font-family:var(--sans);font-size:14px;color:var(--ink);
@@ -349,95 +361,126 @@
   <div class="lg-card">
     <div class="lg-header">
       <div class="lg-logo-row">
-        <span class="lg-logo-mark">REAGENT</span>
-        <div class="lg-logo-sep"></div>
-        <span class="lg-logo-sub">Inventys Research<br>Company Pvt Ltd</span>
+        <span class="lg-logo-sub" style="font-family:var(--serif);font-size:15px;font-weight:700;letter-spacing:.02em;">Inventys Research Company Pvt Ltd</span>
       </div>
-      <h1 class="lg-title">Sign in to your account</h1>
-      <p class="lg-subtitle">Access restricted to Inventys staff</p>
+      <h1 class="lg-title" id="lgTitle">Welcome back</h1>
+      <p class="lg-subtitle" id="lgSubtitle">Sign in to the dispatch &amp; label console</p>
     </div>
 
     <div class="lg-body">
 
-      <!-- STEP 1 · Email -->
-      <div class="lg-step active" id="lgStep1">
+      <!-- ════ VIEW: LOGIN ════ -->
+      <div class="lg-view active" id="viewLogin">
         <div class="lg-field">
-          <label class="lg-label" for="lgEmailInput">Work email address</label>
+          <label class="lg-label" for="liEmail">Work email</label>
           <div class="lg-domain">
-            <input type="text" id="lgEmailInput" class="" placeholder="yourname" autocomplete="username" spellcheck="false">
+            <input type="text" id="liEmail" placeholder="yourname" autocomplete="username" spellcheck="false">
             <span class="lg-domain-suffix">@inventys.in</span>
           </div>
         </div>
-        <button class="lg-btn" id="lgSendOtp">Continue →</button>
-        <div class="lg-err" id="lgErr1"></div>
-        <div class="lg-footer">Only <strong>@inventys.in</strong> email addresses are allowed.</div>
+        <div class="lg-field">
+          <label class="lg-label" for="liPwd">Password</label>
+          <input type="password" id="liPwd" class="lg-input" placeholder="Your password" autocomplete="current-password">
+        </div>
+        <button class="lg-btn" id="liSignIn">Sign in</button>
+        <div class="lg-err" id="liErr"></div>
+        <div class="lg-links">
+          <button class="lg-link" id="goForgot">Forgot password?</button>
+          <button class="lg-link strong" id="goSignup">Create account →</button>
+        </div>
+        <div class="lg-footer">Only <strong>@inventys.in</strong> accounts are allowed.</div>
       </div>
 
-      <!-- STEP 2 · OTP verify -->
-      <div class="lg-step" id="lgStep2">
-        <div class="lg-user-badge">
-          <div class="lg-avatar" id="lgAvatar2">?</div>
-          <div class="lg-user-info">
-            <div class="lg-user-name" id="lgUserName2"></div>
-            <div class="lg-user-email" id="lgUserEmail2"></div>
+      <!-- ════ VIEW: SIGN UP ════ -->
+      <div class="lg-view" id="viewSignup">
+        <!-- substep 1: email -->
+        <div class="lg-substep active" id="suStep1">
+          <h2 class="lg-sectitle">Create your account</h2>
+          <p class="lg-secnote">Enter your Inventys username. We'll email a 6-digit verification code to confirm it's you.</p>
+          <div class="lg-field">
+            <label class="lg-label" for="suEmail">Work email</label>
+            <div class="lg-domain">
+              <input type="text" id="suEmail" placeholder="yourname" autocomplete="username" spellcheck="false">
+              <span class="lg-domain-suffix">@inventys.in</span>
+            </div>
           </div>
+          <button class="lg-btn" id="suSendCode">Send verification code</button>
+          <div class="lg-err" id="suErr1"></div>
+          <div class="lg-links"><button class="lg-link" id="suBackLogin">← Back to sign in</button></div>
         </div>
-
-        <div class="lg-otp-box">
-          <div class="otp-label">Your one-time password</div>
-          <div class="otp-code" id="lgOtpDisplay">------</div>
-          <div class="otp-note">Copy this code and enter it below &nbsp;·&nbsp; expires in <span id="lgOtpTimer">5:00</span></div>
+        <!-- substep 2: code + password -->
+        <div class="lg-substep" id="suStep2">
+          <h2 class="lg-sectitle">Verify &amp; set password</h2>
+          <p class="lg-secnote">Enter the code sent to <strong id="suEmailEcho"></strong> and choose a password.</p>
+          <div class="lg-otp-box" id="suCodeBox" style="display:none;">
+            <div class="otp-label">Email not configured — your code is</div>
+            <div class="otp-code" id="suCodeShown">------</div>
+            <div class="otp-note">Once EmailJS keys are added, this arrives by email instead.</div>
+          </div>
+          <div class="lg-field" style="margin-top:16px;">
+            <label class="lg-label" for="suOtp">Verification code</label>
+            <input type="text" id="suOtp" class="lg-input lg-otp" maxlength="6" placeholder="······" autocomplete="one-time-code">
+          </div>
+          <div class="lg-field">
+            <label class="lg-label" for="suNewPwd">Create password</label>
+            <input type="password" id="suNewPwd" class="lg-input" placeholder="Minimum 8 characters" autocomplete="new-password">
+            <div class="lg-strength"><div class="lg-strength-bar" id="suStrBar" style="width:0;background:var(--line);"></div></div>
+            <div class="lg-strength-text" id="suStrText"></div>
+          </div>
+          <div class="lg-field">
+            <label class="lg-label" for="suConfPwd">Confirm password</label>
+            <input type="password" id="suConfPwd" class="lg-input" placeholder="Re-enter password" autocomplete="new-password">
+          </div>
+          <button class="lg-btn" id="suCreate">Create account &amp; sign in</button>
+          <div class="lg-err" id="suErr2"></div>
+          <div class="lg-links"><button class="lg-link" id="suResend">Resend code</button><button class="lg-link" id="suBackLogin2">← Back to sign in</button></div>
         </div>
-
-        <div class="lg-field" style="margin-top:16px;">
-          <label class="lg-label" for="lgOtpInput">Enter OTP</label>
-          <input type="text" id="lgOtpInput" class="lg-input lg-otp" maxlength="6" placeholder="······" autocomplete="one-time-code">
-        </div>
-        <button class="lg-btn" id="lgVerifyOtp">Verify OTP →</button>
-        <div class="lg-err" id="lgErr2"></div>
-        <button class="lg-back" id="lgBackTo1">← Use a different email</button>
       </div>
 
-      <!-- STEP 3A · Set password (new user) -->
-      <div class="lg-step" id="lgStep3New">
-        <div class="lg-user-badge">
-          <div class="lg-avatar" id="lgAvatar3N">?</div>
-          <div class="lg-user-info">
-            <div class="lg-user-name" id="lgUserName3N"></div>
-            <div class="lg-user-email" id="lgUserEmail3N"></div>
+      <!-- ════ VIEW: FORGOT PASSWORD ════ -->
+      <div class="lg-view" id="viewForgot">
+        <!-- substep 1: email -->
+        <div class="lg-substep active" id="fpStep1">
+          <h2 class="lg-sectitle">Reset your password</h2>
+          <p class="lg-secnote">Enter your username and we'll email you a reset code.</p>
+          <div class="lg-field">
+            <label class="lg-label" for="fpEmail">Work email</label>
+            <div class="lg-domain">
+              <input type="text" id="fpEmail" placeholder="yourname" autocomplete="username" spellcheck="false">
+              <span class="lg-domain-suffix">@inventys.in</span>
+            </div>
           </div>
+          <button class="lg-btn" id="fpSendCode">Send reset code</button>
+          <div class="lg-err" id="fpErr1"></div>
+          <div class="lg-links"><button class="lg-link" id="fpBackLogin">← Back to sign in</button></div>
         </div>
-        <p style="font-size:13px;color:var(--slate);margin:0 0 18px;">Welcome! Set a password to secure your account.</p>
-        <div class="lg-field">
-          <label class="lg-label" for="lgNewPwd">Create password</label>
-          <input type="password" id="lgNewPwd" class="lg-input" placeholder="Minimum 8 characters" autocomplete="new-password">
-          <div class="lg-strength"><div class="lg-strength-bar" id="lgStrBar" style="width:0;background:var(--line);"></div></div>
-          <div class="lg-strength-text" id="lgStrText"></div>
-        </div>
-        <div class="lg-field">
-          <label class="lg-label" for="lgConfPwd">Confirm password</label>
-          <input type="password" id="lgConfPwd" class="lg-input" placeholder="Re-enter password" autocomplete="new-password">
-        </div>
-        <button class="lg-btn" id="lgSetPwd">Set password &amp; sign in →</button>
-        <div class="lg-err" id="lgErr3N"></div>
-      </div>
-
-      <!-- STEP 3B · Enter password (returning user) -->
-      <div class="lg-step" id="lgStep3Ret">
-        <div class="lg-user-badge">
-          <div class="lg-avatar" id="lgAvatar3R">?</div>
-          <div class="lg-user-info">
-            <div class="lg-user-name" id="lgUserName3R"></div>
-            <div class="lg-user-email" id="lgUserEmail3R"></div>
+        <!-- substep 2: code + new password -->
+        <div class="lg-substep" id="fpStep2">
+          <h2 class="lg-sectitle">Choose a new password</h2>
+          <p class="lg-secnote">Enter the reset code sent to <strong id="fpEmailEcho"></strong> and your new password.</p>
+          <div class="lg-otp-box" id="fpCodeBox" style="display:none;">
+            <div class="otp-label">Email not configured — your code is</div>
+            <div class="otp-code" id="fpCodeShown">------</div>
+            <div class="otp-note">Once EmailJS keys are added, this arrives by email instead.</div>
           </div>
+          <div class="lg-field" style="margin-top:16px;">
+            <label class="lg-label" for="fpOtp">Reset code</label>
+            <input type="text" id="fpOtp" class="lg-input lg-otp" maxlength="6" placeholder="······" autocomplete="one-time-code">
+          </div>
+          <div class="lg-field">
+            <label class="lg-label" for="fpNewPwd">New password</label>
+            <input type="password" id="fpNewPwd" class="lg-input" placeholder="Minimum 8 characters" autocomplete="new-password">
+            <div class="lg-strength"><div class="lg-strength-bar" id="fpStrBar" style="width:0;background:var(--line);"></div></div>
+            <div class="lg-strength-text" id="fpStrText"></div>
+          </div>
+          <div class="lg-field">
+            <label class="lg-label" for="fpConfPwd">Confirm new password</label>
+            <input type="password" id="fpConfPwd" class="lg-input" placeholder="Re-enter password" autocomplete="new-password">
+          </div>
+          <button class="lg-btn" id="fpReset">Reset password &amp; sign in</button>
+          <div class="lg-err" id="fpErr2"></div>
+          <div class="lg-links"><button class="lg-link" id="fpResend">Resend code</button><button class="lg-link" id="fpBackLogin2">← Back to sign in</button></div>
         </div>
-        <div class="lg-field">
-          <label class="lg-label" for="lgRetPwd">Password</label>
-          <input type="password" id="lgRetPwd" class="lg-input" placeholder="Enter your password" autocomplete="current-password">
-        </div>
-        <button class="lg-btn" id="lgSignIn">Sign in →</button>
-        <div class="lg-err" id="lgErr3R"></div>
-        <button class="lg-back" id="lgForgotPwd">Forgot password? Reset via OTP</button>
       </div>
 
     </div>
@@ -451,8 +494,7 @@
 
 <div class="app-shell">
 <div class="topbar">
-  <div class="brand"><span class="mark">REAGENT</span><span class="sub">Inventys · dispatch &amp; label console</span></div>
-  <span class="tag">prototype</span>
+  <div class="brand"><span class="mark">Inventys Research</span><span class="sub">Dispatch &amp; Label Console</span></div>
   <div class="outs" style="display:none;" id="genInfo">generates&nbsp; <b>Inner label</b> · <b>Outer label</b> · <b>Invoice</b> · <b>Packing list</b></div>
   <div class="lg-topbar-user" id="topbarUser" style="display:none;">
     <div class="lg-topbar-avatar" id="topbarAvatar">?</div>
@@ -711,7 +753,7 @@ function outerBody(it,b,po,u){
     <div style="font-family:var(--label-sans);font-size:${u(2.25)};color:#333;line-height:1.3;">${esc(it.storage)}</div><div style="height:${u(.5)};"></div>`:''}
     ${it.transport?`<div style="background:#f0f5ff;border:${u(.5)} solid #b8d0f0;border-radius:${u(1)};padding:${u(1.5)} ${u(2)};margin-top:${u(.3)};">
       <div class="lab-sec" style="font-size:${u(2.5)};color:#1b4e8a;margin-bottom:${u(.3)};">TRANSPORT / DG CLASSIFICATION</div>
-      <div style="font-family:var(--label-mono);font-size:${u(2.25)};color:#1b4e8a;font-weight:600;line-height:1.3;">${esc(it.transport)}</div>
+      <div style="font-family:var(--label-mono);font-size:${u(2.0)};color:#1b4e8a;font-weight:600;line-height:1.35;word-break:break-word;white-space:pre-wrap;overflow-wrap:break-word;">${esc(it.transport)}</div>
     </div>`:''}
     <div style="font-family:var(--label-mono);font-size:${u(1.75)};color:#bbb;margin-top:${u(.8)};">SDS on file · Inventys Research Company Pvt Ltd · GSTIN 27AABCI4415K1ZL</div>
   </div>`;
@@ -952,7 +994,7 @@ function proformaPrint(){
   const al=aud.toUpperCase();
   const invTitle=invPaid?'COMMERCIAL INVOICE':'PROFORMA INVOICE';
   const gratisLine=(!invPaid)?`<p style="font-size:8pt;font-style:italic;color:#555;margin:3px 0 0;">Gratis / Research Sample — No commercial value</p>`:'';
-  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t">${invTitle}</div><p style="font-size:8pt;margin-top:5px;">${al} COPY</p><p style="font-size:8pt;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}${gratisLine}
+  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t">${invTitle}</div><p style="font-size:8pt;margin-top:5px;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}${gratisLine}
   <table class="pinvt"><thead><tr><th style="width:6%;">#</th><th>Description</th><th class="r" style="width:13%;">Qty (Kg)</th><th class="r" style="width:15%;">Rate (USD/Kg)</th><th class="r" style="width:15%;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="ptot"><div class="r g"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div></div><div class="pwords">Amount in words: ${wordsUSD(sub)}</div>
   <div class="pfoot">Bank: AXIS BANK LIMITED, Mumbai · A/C 915020013285666 · SWIFT AXISINBB230 · IFSC UTIB0000230<br>IEC: 0306019141 · GSTIN: 27AABCI4415K1ZL<br>Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.<br><br>For Inventys Research Company Pvt Ltd &nbsp;&nbsp;&nbsp;&nbsp; (Authorized Signatory)</div></div>`;
@@ -1218,21 +1260,53 @@ document.getElementById('syncInrBtn').addEventListener('click',function(){
 const DS_KEY='rgt_dispatches_v1';
 function loadDispatches(){try{return JSON.parse(localStorage.getItem(DS_KEY)||'[]');}catch(e){return [];}}
 function saveDispatches(arr){try{localStorage.setItem(DS_KEY,JSON.stringify(arr));}catch(e){alert('Could not save to localStorage: '+e.message);}}
+function dispatchPDF(idx){
+  const arr=loadDispatches(); const d=arr[idx]; if(!d)return;
+  const sn=d.stateSnapshot||{}; const ord=sn.order||{}; const items=sn.items||[];
+  const rows=items.map(it=>{
+    const batches=(it.batches||[]).map(b=>`${esc(b.batch||'')} × ${b.qty||''}kg (${b.copies||1} copies)`).join('<br>');
+    return `<tr><td>${esc(it.customer||it.customs||'')}</td><td>${esc(it.cas||'')}</td><td style="font-size:10px;">${batches}</td></tr>`;
+  }).join('');
+  const docs=(d.docs||[]).map(doc=>`<li style="font-size:11px;">${esc(doc.name)} (${esc(doc.type)}) — ${esc(doc.addedAt||'')}</li>`).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(d.label)}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:12px;padding:20mm;}h1{font-size:16px;}h2{font-size:12px;color:#555;margin:16px 0 4px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;font-size:11px;}th{background:#f0f4f8;}</style>
+  </head><body>
+  <h1>Dispatch Record — ${esc(d.label)}</h1>
+  <p style="color:#666;">Saved: ${esc(d.savedAt)} &nbsp;|&nbsp; Invoice: ${esc(ord.inv||'')} &nbsp;|&nbsp; PO: ${esc(ord.po||'')} &nbsp;|&nbsp; Buyer: ${esc(ord.buyer||'')} &nbsp;|&nbsp; Date: ${esc(ord.date||'')}</p>
+  <h2>Items</h2>
+  <table><thead><tr><th>Product</th><th>CAS#</th><th>Batches / Qty</th></tr></thead><tbody>${rows}</tbody></table>
+  ${docs?`<h2>Attached Documents</h2><ul>${docs}</ul>`:''}
+  <p style="margin-top:24px;font-size:10px;color:#888;">Inventys Research Company Pvt. Ltd — Exported ${new Date().toLocaleString()}</p>
+  </body></html>`;
+  const win=window.open('','_blank');
+  if(win){win.document.write(html);win.document.close();win.focus();setTimeout(()=>{win.print();},400);}
+}
 function renderDispatches(){
   const list=document.getElementById('dispatchList'); if(!list)return;
   const arr=loadDispatches();
   if(!arr.length){list.innerHTML='<p style="font-size:12px;color:var(--slate);">No saved dispatches yet.</p>';return;}
   list.innerHTML=arr.map((d,idx)=>{
-    const docs=(d.docs||[]).map((doc,di)=>`<div class="ship-doc-row"><span class="doc-chip">${esc(doc.type||'FILE')}</span><span>${esc(doc.name)}</span><span class="ship-meta">${esc(doc.addedAt||'')}</span><a class="doc-dl" data-dispatch-action="dl-doc" data-idx="${idx}" data-di="${di}">Download</a></div>`).join('');
-    const items=(d.stateSnapshot&&d.stateSnapshot.items||[]).map(it=>`<span style="font-family:var(--mono);font-size:11px;">${esc(it.customer||it.customs||'')}</span>`).join(', ');
-    return `<div class="ship-item"><div class="ship-item-hd"><span class="ship-lbl">${esc(d.label)}</span><span class="ship-meta">${esc(d.savedAt)}</span>
-      <label class="btn tiny" style="cursor:pointer;">📎 Attach<input type="file" style="display:none;" data-dispatch-action="attach" data-idx="${idx}"></label>
-      <button class="btn tiny x" data-dispatch-action="del" data-idx="${idx}">🗑 Delete</button></div>
-      <div style="font-size:12px;color:var(--slate);">Items: ${items}</div>
-      ${docs?`<div class="ship-docs">${docs}</div>`:''}
+    const docs=(d.docs||[]).map((doc,di)=>`<div class="ship-doc-row"><span class="doc-chip">${esc(doc.type||'FILE')}</span><span>${esc(doc.name)}</span><span class="ship-meta">${esc(doc.addedAt||'')}</span><a class="doc-dl" data-dispatch-action="dl-doc" data-idx="${idx}" data-di="${di}">⬇ Download</a></div>`).join('');
+    const items=(d.stateSnapshot&&d.stateSnapshot.items||[]).map(it=>`<b>${esc(it.customer||it.customs||'')}</b>`).join(', ');
+    const ord=d.stateSnapshot&&d.stateSnapshot.order||{};
+    return `<div class="ship-item">
+      <div class="ship-item-hd" style="cursor:pointer;" data-dispatch-action="toggle" data-idx="${idx}">
+        <span class="ship-lbl">${esc(d.label)}</span>
+        <span class="ship-meta">${esc(d.savedAt)}</span>
+        <span style="font-size:11px;color:var(--slate);font-family:var(--mono);">▶ click to expand</span>
+        <button class="btn tiny x" data-dispatch-action="del" data-idx="${idx}">🗑</button>
+      </div>
+      <div class="ship-detail" id="shipDetail${idx}" style="display:none;padding-top:10px;border-top:1px dashed var(--line);margin-top:8px;">
+        <div style="font-size:12px;color:var(--slate);margin-bottom:8px;">Inv: <b>${esc(ord.inv||'—')}</b> &nbsp;|&nbsp; PO: <b>${esc(ord.po||'—')}</b> &nbsp;|&nbsp; Buyer: <b>${esc(ord.buyer||'—')}</b> &nbsp;|&nbsp; Date: ${esc(ord.date||'—')}</div>
+        <div style="font-size:12px;margin-bottom:8px;">Items: ${items}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <label class="btn tiny" style="cursor:pointer;">📎 Attach document<input type="file" style="display:none;" data-dispatch-action="attach" data-idx="${idx}"></label>
+          <button class="btn tiny print" data-dispatch-action="pdf" data-idx="${idx}">🖨 Export PDF / Print</button>
+        </div>
+        ${docs?`<div class="ship-docs">${docs}</div>`:'<p style="font-size:11px;color:var(--muted);">No documents attached yet.</p>'}
+      </div>
     </div>`;
   }).join('');
-  // attach doc-download and delete handlers via delegation
 }
 function saveCurrentDispatch(){
   const label=prompt('Label for this dispatch:',`${state.order.po||''}${state.order.buyer?' – '+state.order.buyer:''}`) ;
@@ -1254,7 +1328,16 @@ document.getElementById('saveDispatchBtn').addEventListener('click',saveCurrentD
 document.getElementById('dispatchList').addEventListener('click',function(e){
   const t=e.target.closest('[data-dispatch-action]'); if(!t)return;
   const act=t.dataset.dispatchAction, idx=+t.dataset.idx, di=+t.dataset.di;
+  if(act==='toggle'){
+    const detail=document.getElementById('shipDetail'+idx); if(!detail)return;
+    const open=detail.style.display!=='none';
+    detail.style.display=open?'none':'block';
+    const hint=t.querySelector('span[style*="mono"]');
+    if(hint)hint.textContent=open?'▶ click to expand':'▼ collapse';
+    return;
+  }
   if(act==='del'){if(!confirm('Delete this dispatch record?'))return;const arr=loadDispatches();arr.splice(idx,1);saveDispatches(arr);renderDispatches();}
+  if(act==='pdf'){dispatchPDF(idx);return;}
   if(act==='dl-doc'){const arr=loadDispatches();const doc=arr[idx]&&arr[idx].docs&&arr[idx].docs[di];if(!doc)return;const a=document.createElement('a');a.href=doc.b64;a.download=doc.name;a.click();}
 });
 document.getElementById('dispatchList').addEventListener('change',function(e){
@@ -1311,12 +1394,38 @@ renderAll();
   const DOMAIN = '@inventys.in';
   const LS_KEY = 'rgt_users_v1';
   const SS_KEY = 'rgt_session_v1';
-  let currentEmail = '';
-  let generatedOtp  = '';
-  let otpExpiry     = 0;
-  let otpTimerRef   = null;
 
-  /* ── helpers ── */
+  /* ───────────────────────────────────────────────────────────────
+     EMAIL DELIVERY (EmailJS) — fill these 3 values to send real
+     OTP / reset emails to the inbox. Get them free at emailjs.com:
+       1. Create account → add an Email Service  → copy its Service ID
+       2. Create an Email Template with variables {{to_email}},
+          {{passcode}}, {{purpose}}  → copy its Template ID
+       3. Account → API Keys → copy your Public Key
+     Until these are set, the code is shown on screen as a fallback.
+  ─────────────────────────────────────────────────────────────── */
+  const EMAILJS = { publicKey:'', serviceId:'', templateId:'' };
+  function emailConfigured(){ return !!(EMAILJS.publicKey && EMAILJS.serviceId && EMAILJS.templateId && window.emailjs); }
+  if(EMAILJS.publicKey && window.emailjs){ try{ emailjs.init({publicKey:EMAILJS.publicKey}); }catch(e){ console.error('EmailJS init failed', e); } }
+
+  async function deliverCode(prefix, code, purpose){
+    if(!emailConfigured()) return false;
+    try{
+      await emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
+        to_email: prefix + DOMAIN,
+        passcode: code,
+        purpose: purpose==='signup' ? 'verify your new account' : 'reset your password'
+      });
+      return true;
+    }catch(e){ console.error('EmailJS send failed', e); return false; }
+  }
+
+  /* ── flow state ── */
+  let flowEmail = '';      // username prefix for signup / reset
+  let flowCode  = '';
+  let flowExp   = 0;
+
+  /* ── storage helpers ── */
   function usersDB(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch{return {};}}
   function saveUsers(db){localStorage.setItem(LS_KEY,JSON.stringify(db));}
   function session(){try{return JSON.parse(sessionStorage.getItem(SS_KEY)||'null');}catch{return null;}}
@@ -1327,220 +1436,194 @@ renderAll();
     return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
   }
 
+  /* ── misc helpers ── */
+  const $ = id => document.getElementById(id);
+  function val(id){ return ($(id) && $(id).value || '').trim(); }
+  function genCode(){ return String(Math.floor(100000+Math.random()*900000)); }
+  function validPrefix(raw){ return /^[a-z0-9][a-z0-9._-]*$/.test(raw); }
+  function normPrefix(id, errId){
+    const raw=(val(id)||'').toLowerCase();
+    if(!raw){ setErr(errId,'Please enter your username (the part before @inventys.in).'); return null; }
+    if(raw.includes('@')){ setErr(errId,'Enter only the part before @inventys.in — the domain is added automatically.'); return null; }
+    if(!validPrefix(raw)){ setErr(errId,'Username contains invalid characters.'); return null; }
+    return raw;
+  }
+  function setErr(id,msg){ const el=$(id); if(!el)return; el.textContent=msg||''; el.classList.toggle('show',!!msg); }
   function initials(email){
-    const local = email.split('@')[0];
-    const parts = local.split(/[._-]/);
-    return (parts[0]?.[0]||'').toUpperCase() + (parts[1]?.[0]||'').toUpperCase() || local[0].toUpperCase();
+    const local=email.split('@')[0], parts=local.split(/[._-]/);
+    return ((parts[0]?.[0]||'')+(parts[1]?.[0]||'')).toUpperCase() || local[0].toUpperCase();
   }
   function displayName(email){
-    const local = email.split('@')[0];
-    return local.split(/[._-]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    return email.split('@')[0].split(/[._-]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
   }
-
-  function showStep(id){
-    document.querySelectorAll('.lg-step').forEach(s=>s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-  }
-  function setErr(id,msg){
-    const el=document.getElementById(id);
-    if(!el) return;
-    el.textContent=msg;
-    el.classList.toggle('show',!!msg);
-  }
-  function setBadge(prefix,email){
-    const ini=initials(email), name=displayName(email);
-    const av=document.getElementById('lgAvatar'+prefix);
-    const nm=document.getElementById('lgUserName'+prefix);
-    const em=document.getElementById('lgUserEmail'+prefix);
-    if(av) av.textContent=ini;
-    if(nm) nm.textContent=name;
-    if(em) em.textContent=email+DOMAIN;
-  }
-
-  function generateOtp(){
-    return String(Math.floor(100000+Math.random()*900000));
-  }
-
-  function startOtpTimer(){
-    clearInterval(otpTimerRef);
-    const timerEl=document.getElementById('lgOtpTimer');
-    let remaining=300; // 5 min
-    function tick(){
-      const m=Math.floor(remaining/60), s=remaining%60;
-      if(timerEl) timerEl.textContent=`${m}:${s.toString().padStart(2,'0')}`;
-      if(remaining<=0){clearInterval(otpTimerRef);if(timerEl)timerEl.textContent='expired';}
-      remaining--;
-    }
-    tick();
-    otpTimerRef=setInterval(tick,1000);
-  }
-
   function toast(msg){
-    const el=document.getElementById('loginToast');
-    const msg_el=document.getElementById('loginToastMsg');
-    if(!el||!msg_el) return;
-    msg_el.textContent=msg;
-    el.classList.add('show');
-    setTimeout(()=>el.classList.remove('show'),3500);
+    const el=$('loginToast'), m=$('loginToastMsg'); if(!el||!m)return;
+    m.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),3500);
   }
 
-  function enterApp(email){
+  /* ── view switching ── */
+  function showView(id){
+    document.querySelectorAll('.lg-view').forEach(v=>v.classList.remove('active'));
+    $(id).classList.add('active');
+  }
+  function showSub(viewId, subId){
+    document.querySelectorAll('#'+viewId+' .lg-substep').forEach(s=>s.classList.remove('active'));
+    $(subId).classList.add('active');
+  }
+  function setTitle(t,s){ if($('lgTitle'))$('lgTitle').textContent=t; if($('lgSubtitle'))$('lgSubtitle').textContent=s; }
+
+  /* ── password strength meter ── */
+  function wireStrength(inputId, barId, textId){
+    $(inputId).addEventListener('input',function(){
+      const v=this.value; let score=0;
+      if(v.length>=8)score++; if(/[A-Z]/.test(v))score++; if(/[0-9]/.test(v))score++; if(/[^A-Za-z0-9]/.test(v))score++;
+      const bar=$(barId), txt=$(textId);
+      const colors=['#ef4444','#f97316','#eab308','#22c55e'], labels=['Weak','Fair','Good','Strong'];
+      if(!v){bar.style.width='0';bar.style.background='var(--line)';txt.textContent='';return;}
+      bar.style.width=(score/4*100)+'%'; bar.style.background=colors[score-1]||colors[0]; txt.textContent=labels[score-1]||labels[0];
+    });
+  }
+  wireStrength('suNewPwd','suStrBar','suStrText');
+  wireStrength('fpNewPwd','fpStrBar','fpStrText');
+
+  /* ── enter the app ── */
+  function enterApp(prefix){
+    const email=prefix; // stored as prefix (before domain)
     saveSession({email, ts:Date.now()});
-    document.getElementById('loginScreen').classList.add('hidden');
+    $('loginScreen').classList.add('hidden');
     document.querySelector('.app-shell').classList.add('unlocked');
     const ini=initials(email), name=displayName(email);
-    const tb=document.getElementById('topbarUser');
-    const av=document.getElementById('topbarAvatar');
-    const nm=document.getElementById('topbarName');
-    const gi=document.getElementById('genInfo');
-    if(tb){tb.style.display='flex';}
-    if(gi){gi.style.display='flex';}
-    if(av) av.textContent=ini;
-    if(nm) nm.textContent=name;
-    toast('Welcome back, '+name+'!');
+    if($('topbarUser'))$('topbarUser').style.display='flex';
+    if($('genInfo'))$('genInfo').style.display='flex';
+    if($('topbarAvatar'))$('topbarAvatar').textContent=ini;
+    if($('topbarName'))$('topbarName').textContent=name;
+    toast('Welcome, '+name+'!');
   }
 
-  /* ── auto-login if session exists ── */
+  /* ── auto-login from session ── */
   const sess=session();
-  if(sess && sess.email){
-    enterApp(sess.email);
+  if(sess && sess.email){ enterApp(sess.email); }
+
+  /* ════ LOGIN ════ */
+  async function doLogin(){
+    setErr('liErr','');
+    const raw=normPrefix('liEmail','liErr'); if(!raw)return;
+    const pwd=$('liPwd').value;
+    if(!pwd){ setErr('liErr','Please enter your password.'); return; }
+    const db=usersDB();
+    if(!db[raw] || !db[raw].pwd){ setErr('liErr','No account found for this email. Use “Create account” first.'); return; }
+    const hashed=await hashPwd(pwd);
+    if(db[raw].pwd!==hashed){ setErr('liErr','Incorrect password. Use “Forgot password?” to reset it.'); return; }
+    enterApp(raw);
   }
+  $('liSignIn').addEventListener('click', doLogin);
+  $('liEmail').addEventListener('keydown',e=>{ if(e.key==='Enter')$('liPwd').focus(); });
+  $('liPwd').addEventListener('keydown',e=>{ if(e.key==='Enter')doLogin(); });
 
-  /* ── Step 1 · send OTP ── */
-  document.getElementById('lgSendOtp').addEventListener('click', async function(){
-    setErr('lgErr1','');
-    const raw=(document.getElementById('lgEmailInput').value||'').trim().toLowerCase();
-    if(!raw){setErr('lgErr1','Please enter your username (part before @inventys.in).');return;}
-    if(raw.includes('@')){setErr('lgErr1','Enter only the part before @inventys.in — the domain is added automatically.');return;}
-    if(!/^[a-z0-9][a-z0-9._-]*$/.test(raw)){setErr('lgErr1','Username contains invalid characters.');return;}
-    currentEmail=raw;
-    generatedOtp=generateOtp();
-    otpExpiry=Date.now()+300000;
-    document.getElementById('lgOtpDisplay').textContent=generatedOtp;
-    setBadge('2',currentEmail);
-    startOtpTimer();
-    showStep('lgStep2');
-    document.getElementById('lgOtpInput').focus();
+  $('goSignup').addEventListener('click',function(){
+    setErr('liErr',''); setErr('suErr1',''); setErr('suErr2','');
+    showSub('viewSignup','suStep1'); showView('viewSignup');
+    setTitle('Create your account','Join the dispatch & label console');
+    $('suEmail').focus();
+  });
+  $('goForgot').addEventListener('click',function(){
+    setErr('liErr',''); setErr('fpErr1',''); setErr('fpErr2','');
+    showSub('viewForgot','fpStep1'); showView('viewForgot');
+    setTitle('Reset password','We will email you a reset code');
+    $('fpEmail').focus();
   });
 
-  /* ── Step 2 · verify OTP ── */
-  document.getElementById('lgVerifyOtp').addEventListener('click', function(){
-    setErr('lgErr2','');
-    const entered=(document.getElementById('lgOtpInput').value||'').trim();
-    if(!entered){setErr('lgErr2','Please enter the OTP shown above.');return;}
-    if(Date.now()>otpExpiry){setErr('lgErr2','OTP has expired. Go back and request a new one.');return;}
-    if(entered!==generatedOtp){setErr('lgErr2','Incorrect OTP. Please try again.');return;}
-    clearInterval(otpTimerRef);
+  function backToLogin(prefill){
+    showView('viewLogin');
+    setTitle('Welcome back','Sign in to the dispatch & label console');
+    if(prefill && $('liEmail')) $('liEmail').value=prefill;
+    setErr('liErr','');
+    $('liPwd').focus();
+  }
+  ['suBackLogin','suBackLogin2','fpBackLogin','fpBackLogin2'].forEach(id=>{
+    const el=$(id); if(el) el.addEventListener('click',()=>backToLogin());
+  });
+
+  /* ════ SIGN UP ════ */
+  async function sendSignupCode(){
+    setErr('suErr1','');
+    const raw=normPrefix('suEmail','suErr1'); if(!raw)return;
     const db=usersDB();
-    const hasPassword=!!(db[currentEmail]&&db[currentEmail].pwd);
-    if(hasPassword){
-      setBadge('3R',currentEmail);
-      showStep('lgStep3Ret');
-      document.getElementById('lgRetPwd').focus();
-    } else {
-      setBadge('3N',currentEmail);
-      showStep('lgStep3New');
-      document.getElementById('lgNewPwd').focus();
-    }
-  });
+    if(db[raw] && db[raw].pwd){ setErr('suErr1','An account already exists for this email. Please sign in instead.'); return; }
+    flowEmail=raw; flowCode=genCode(); flowExp=Date.now()+600000;
+    $('suCreate').disabled=true;
+    const sent=await deliverCode(raw, flowCode, 'signup');
+    $('suCreate').disabled=false;
+    $('suEmailEcho').textContent=raw+DOMAIN;
+    showSub('viewSignup','suStep2');
+    if(sent){ $('suCodeBox').style.display='none'; toast('Verification code emailed to '+raw+DOMAIN); }
+    else { $('suCodeBox').style.display='block'; $('suCodeShown').textContent=flowCode; }
+    $('suOtp').focus();
+  }
+  $('suSendCode').addEventListener('click', sendSignupCode);
+  $('suResend').addEventListener('click', sendSignupCode);
+  $('suEmail').addEventListener('keydown',e=>{ if(e.key==='Enter')sendSignupCode(); });
 
-  /* ── allow pressing Enter on OTP field ── */
-  document.getElementById('lgOtpInput').addEventListener('keydown',function(e){
-    if(e.key==='Enter') document.getElementById('lgVerifyOtp').click();
-  });
-
-  /* ── Password strength ── */
-  document.getElementById('lgNewPwd').addEventListener('input',function(){
-    const v=this.value;
-    let score=0;
-    if(v.length>=8) score++;
-    if(/[A-Z]/.test(v)) score++;
-    if(/[0-9]/.test(v)) score++;
-    if(/[^A-Za-z0-9]/.test(v)) score++;
-    const bar=document.getElementById('lgStrBar');
-    const txt=document.getElementById('lgStrText');
-    const colors=['#ef4444','#f97316','#eab308','#22c55e'];
-    const labels=['Weak','Fair','Good','Strong'];
-    if(!v){bar.style.width='0';txt.textContent='';return;}
-    bar.style.width=((score)/4*100)+'%';
-    bar.style.background=colors[score-1]||colors[0];
-    txt.textContent=labels[score-1]||labels[0];
-  });
-
-  /* ── Step 3A · set password (new user) ── */
-  document.getElementById('lgSetPwd').addEventListener('click', async function(){
-    setErr('lgErr3N','');
-    const pwd=document.getElementById('lgNewPwd').value;
-    const conf=document.getElementById('lgConfPwd').value;
-    if(pwd.length<8){setErr('lgErr3N','Password must be at least 8 characters.');return;}
-    if(pwd!==conf){setErr('lgErr3N','Passwords do not match.');return;}
+  $('suCreate').addEventListener('click', async function(){
+    setErr('suErr2','');
+    const code=val('suOtp');
+    if(!code){ setErr('suErr2','Enter the verification code.'); return; }
+    if(Date.now()>flowExp){ setErr('suErr2','Code expired. Tap “Resend code”.'); return; }
+    if(code!==flowCode){ setErr('suErr2','Incorrect code. Please check and try again.'); return; }
+    const pwd=$('suNewPwd').value, conf=$('suConfPwd').value;
+    if(pwd.length<8){ setErr('suErr2','Password must be at least 8 characters.'); return; }
+    if(pwd!==conf){ setErr('suErr2','Passwords do not match.'); return; }
     const hashed=await hashPwd(pwd);
-    const db=usersDB();
-    db[currentEmail]={pwd:hashed,created:Date.now()};
-    saveUsers(db);
-    enterApp(currentEmail);
+    const db=usersDB(); db[flowEmail]={pwd:hashed,created:Date.now()}; saveUsers(db);
+    enterApp(flowEmail);
   });
 
-  /* ── Step 3B · sign in (returning user) ── */
-  document.getElementById('lgSignIn').addEventListener('click', async function(){
-    setErr('lgErr3R','');
-    const pwd=document.getElementById('lgRetPwd').value;
-    if(!pwd){setErr('lgErr3R','Please enter your password.');return;}
+  /* ════ FORGOT PASSWORD ════ */
+  async function sendResetCode(){
+    setErr('fpErr1','');
+    const raw=normPrefix('fpEmail','fpErr1'); if(!raw)return;
+    const db=usersDB();
+    if(!db[raw] || !db[raw].pwd){ setErr('fpErr1','No account found for this email. Create an account first.'); return; }
+    flowEmail=raw; flowCode=genCode(); flowExp=Date.now()+600000;
+    $('fpReset').disabled=true;
+    const sent=await deliverCode(raw, flowCode, 'reset');
+    $('fpReset').disabled=false;
+    $('fpEmailEcho').textContent=raw+DOMAIN;
+    showSub('viewForgot','fpStep2');
+    if(sent){ $('fpCodeBox').style.display='none'; toast('Reset code emailed to '+raw+DOMAIN); }
+    else { $('fpCodeBox').style.display='block'; $('fpCodeShown').textContent=flowCode; }
+    $('fpOtp').focus();
+  }
+  $('fpSendCode').addEventListener('click', sendResetCode);
+  $('fpResend').addEventListener('click', sendResetCode);
+  $('fpEmail').addEventListener('keydown',e=>{ if(e.key==='Enter')sendResetCode(); });
+
+  $('fpReset').addEventListener('click', async function(){
+    setErr('fpErr2','');
+    const code=val('fpOtp');
+    if(!code){ setErr('fpErr2','Enter the reset code.'); return; }
+    if(Date.now()>flowExp){ setErr('fpErr2','Code expired. Tap “Resend code”.'); return; }
+    if(code!==flowCode){ setErr('fpErr2','Incorrect code. Please check and try again.'); return; }
+    const pwd=$('fpNewPwd').value, conf=$('fpConfPwd').value;
+    if(pwd.length<8){ setErr('fpErr2','Password must be at least 8 characters.'); return; }
+    if(pwd!==conf){ setErr('fpErr2','Passwords do not match.'); return; }
     const hashed=await hashPwd(pwd);
-    const db=usersDB();
-    if(!db[currentEmail]||db[currentEmail].pwd!==hashed){
-      setErr('lgErr3R','Incorrect password. Use the reset link below if you forgot it.');return;
-    }
-    enterApp(currentEmail);
-  });
-  document.getElementById('lgRetPwd').addEventListener('keydown',function(e){
-    if(e.key==='Enter') document.getElementById('lgSignIn').click();
-  });
-
-  /* ── Forgot password → re-verify via OTP ── */
-  document.getElementById('lgForgotPwd').addEventListener('click',function(){
-    const db=usersDB();
-    if(db[currentEmail]) delete db[currentEmail].pwd;
-    saveUsers(db);
-    setBadge('3N',currentEmail);
-    document.getElementById('lgNewPwd').value='';
-    document.getElementById('lgConfPwd').value='';
-    document.getElementById('lgStrBar').style.width='0';
-    document.getElementById('lgStrText').textContent='';
-    setErr('lgErr3N','');
-    showStep('lgStep3New');
-  });
-
-  /* ── Back to step 1 ── */
-  document.getElementById('lgBackTo1').addEventListener('click',function(){
-    clearInterval(otpTimerRef);
-    setErr('lgErr2','');
-    document.getElementById('lgOtpInput').value='';
-    showStep('lgStep1');
-    document.getElementById('lgEmailInput').focus();
-  });
-
-  /* ── Allow Enter on email input ── */
-  document.getElementById('lgEmailInput').addEventListener('keydown',function(e){
-    if(e.key==='Enter') document.getElementById('lgSendOtp').click();
+    const db=usersDB(); db[flowEmail]=db[flowEmail]||{}; db[flowEmail].pwd=hashed; saveUsers(db);
+    toast('Password updated. Signing you in…');
+    enterApp(flowEmail);
   });
 
   /* ── Logout ── */
-  document.getElementById('logoutBtn').addEventListener('click',function(){
+  $('logoutBtn').addEventListener('click',function(){
     sessionStorage.removeItem(SS_KEY);
-    currentEmail='';
-    generatedOtp='';
-    document.getElementById('lgEmailInput').value='';
-    document.getElementById('lgOtpInput').value='';
-    document.getElementById('lgRetPwd').value='';
-    document.getElementById('lgNewPwd').value='';
-    document.getElementById('lgConfPwd').value='';
-    setErr('lgErr1','');setErr('lgErr2','');setErr('lgErr3N','');setErr('lgErr3R','');
-    showStep('lgStep1');
-    document.getElementById('loginScreen').classList.remove('hidden');
+    flowEmail=''; flowCode='';
+    ['liEmail','liPwd','suEmail','suOtp','suNewPwd','suConfPwd','fpEmail','fpOtp','fpNewPwd','fpConfPwd'].forEach(id=>{ if($(id))$(id).value=''; });
+    ['liErr','suErr1','suErr2','fpErr1','fpErr2'].forEach(id=>setErr(id,''));
+    backToLogin();
+    $('loginScreen').classList.remove('hidden');
     document.querySelector('.app-shell').classList.remove('unlocked');
-    document.getElementById('topbarUser').style.display='none';
-    document.getElementById('genInfo').style.display='none';
+    $('topbarUser').style.display='none';
+    $('genInfo').style.display='none';
   });
 
 })();
