@@ -349,9 +349,7 @@
   <div class="lg-card">
     <div class="lg-header">
       <div class="lg-logo-row">
-        <span class="lg-logo-mark">REAGENT</span>
-        <div class="lg-logo-sep"></div>
-        <span class="lg-logo-sub">Inventys Research<br>Company Pvt Ltd</span>
+        <span class="lg-logo-sub" style="font-size:15px;font-weight:700;letter-spacing:.04em;">Inventys Research Company Pvt Ltd</span>
       </div>
       <h1 class="lg-title">Sign in to your account</h1>
       <p class="lg-subtitle">Access restricted to Inventys staff</p>
@@ -451,8 +449,7 @@
 
 <div class="app-shell">
 <div class="topbar">
-  <div class="brand"><span class="mark">REAGENT</span><span class="sub">Inventys · dispatch &amp; label console</span></div>
-  <span class="tag">prototype</span>
+  <div class="brand"><span class="mark">Inventys Research</span><span class="sub">Dispatch &amp; Label Console</span></div>
   <div class="outs" style="display:none;" id="genInfo">generates&nbsp; <b>Inner label</b> · <b>Outer label</b> · <b>Invoice</b> · <b>Packing list</b></div>
   <div class="lg-topbar-user" id="topbarUser" style="display:none;">
     <div class="lg-topbar-avatar" id="topbarAvatar">?</div>
@@ -711,7 +708,7 @@ function outerBody(it,b,po,u){
     <div style="font-family:var(--label-sans);font-size:${u(2.25)};color:#333;line-height:1.3;">${esc(it.storage)}</div><div style="height:${u(.5)};"></div>`:''}
     ${it.transport?`<div style="background:#f0f5ff;border:${u(.5)} solid #b8d0f0;border-radius:${u(1)};padding:${u(1.5)} ${u(2)};margin-top:${u(.3)};">
       <div class="lab-sec" style="font-size:${u(2.5)};color:#1b4e8a;margin-bottom:${u(.3)};">TRANSPORT / DG CLASSIFICATION</div>
-      <div style="font-family:var(--label-mono);font-size:${u(2.25)};color:#1b4e8a;font-weight:600;line-height:1.3;">${esc(it.transport)}</div>
+      <div style="font-family:var(--label-mono);font-size:${u(2.0)};color:#1b4e8a;font-weight:600;line-height:1.35;word-break:break-word;white-space:pre-wrap;overflow-wrap:break-word;">${esc(it.transport)}</div>
     </div>`:''}
     <div style="font-family:var(--label-mono);font-size:${u(1.75)};color:#bbb;margin-top:${u(.8)};">SDS on file · Inventys Research Company Pvt Ltd · GSTIN 27AABCI4415K1ZL</div>
   </div>`;
@@ -952,7 +949,7 @@ function proformaPrint(){
   const al=aud.toUpperCase();
   const invTitle=invPaid?'COMMERCIAL INVOICE':'PROFORMA INVOICE';
   const gratisLine=(!invPaid)?`<p style="font-size:8pt;font-style:italic;color:#555;margin:3px 0 0;">Gratis / Research Sample — No commercial value</p>`:'';
-  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t">${invTitle}</div><p style="font-size:8pt;margin-top:5px;">${al} COPY</p><p style="font-size:8pt;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}${gratisLine}
+  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t">${invTitle}</div><p style="font-size:8pt;margin-top:5px;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}${gratisLine}
   <table class="pinvt"><thead><tr><th style="width:6%;">#</th><th>Description</th><th class="r" style="width:13%;">Qty (Kg)</th><th class="r" style="width:15%;">Rate (USD/Kg)</th><th class="r" style="width:15%;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="ptot"><div class="r g"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div></div><div class="pwords">Amount in words: ${wordsUSD(sub)}</div>
   <div class="pfoot">Bank: AXIS BANK LIMITED, Mumbai · A/C 915020013285666 · SWIFT AXISINBB230 · IFSC UTIB0000230<br>IEC: 0306019141 · GSTIN: 27AABCI4415K1ZL<br>Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.<br><br>For Inventys Research Company Pvt Ltd &nbsp;&nbsp;&nbsp;&nbsp; (Authorized Signatory)</div></div>`;
@@ -1218,21 +1215,53 @@ document.getElementById('syncInrBtn').addEventListener('click',function(){
 const DS_KEY='rgt_dispatches_v1';
 function loadDispatches(){try{return JSON.parse(localStorage.getItem(DS_KEY)||'[]');}catch(e){return [];}}
 function saveDispatches(arr){try{localStorage.setItem(DS_KEY,JSON.stringify(arr));}catch(e){alert('Could not save to localStorage: '+e.message);}}
+function dispatchPDF(idx){
+  const arr=loadDispatches(); const d=arr[idx]; if(!d)return;
+  const sn=d.stateSnapshot||{}; const ord=sn.order||{}; const items=sn.items||[];
+  const rows=items.map(it=>{
+    const batches=(it.batches||[]).map(b=>`${esc(b.batch||'')} × ${b.qty||''}kg (${b.copies||1} copies)`).join('<br>');
+    return `<tr><td>${esc(it.customer||it.customs||'')}</td><td>${esc(it.cas||'')}</td><td style="font-size:10px;">${batches}</td></tr>`;
+  }).join('');
+  const docs=(d.docs||[]).map(doc=>`<li style="font-size:11px;">${esc(doc.name)} (${esc(doc.type)}) — ${esc(doc.addedAt||'')}</li>`).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(d.label)}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:12px;padding:20mm;}h1{font-size:16px;}h2{font-size:12px;color:#555;margin:16px 0 4px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;font-size:11px;}th{background:#f0f4f8;}</style>
+  </head><body>
+  <h1>Dispatch Record — ${esc(d.label)}</h1>
+  <p style="color:#666;">Saved: ${esc(d.savedAt)} &nbsp;|&nbsp; Invoice: ${esc(ord.inv||'')} &nbsp;|&nbsp; PO: ${esc(ord.po||'')} &nbsp;|&nbsp; Buyer: ${esc(ord.buyer||'')} &nbsp;|&nbsp; Date: ${esc(ord.date||'')}</p>
+  <h2>Items</h2>
+  <table><thead><tr><th>Product</th><th>CAS#</th><th>Batches / Qty</th></tr></thead><tbody>${rows}</tbody></table>
+  ${docs?`<h2>Attached Documents</h2><ul>${docs}</ul>`:''}
+  <p style="margin-top:24px;font-size:10px;color:#888;">Inventys Research Company Pvt. Ltd — Exported ${new Date().toLocaleString()}</p>
+  </body></html>`;
+  const win=window.open('','_blank');
+  if(win){win.document.write(html);win.document.close();win.focus();setTimeout(()=>{win.print();},400);}
+}
 function renderDispatches(){
   const list=document.getElementById('dispatchList'); if(!list)return;
   const arr=loadDispatches();
   if(!arr.length){list.innerHTML='<p style="font-size:12px;color:var(--slate);">No saved dispatches yet.</p>';return;}
   list.innerHTML=arr.map((d,idx)=>{
-    const docs=(d.docs||[]).map((doc,di)=>`<div class="ship-doc-row"><span class="doc-chip">${esc(doc.type||'FILE')}</span><span>${esc(doc.name)}</span><span class="ship-meta">${esc(doc.addedAt||'')}</span><a class="doc-dl" data-dispatch-action="dl-doc" data-idx="${idx}" data-di="${di}">Download</a></div>`).join('');
-    const items=(d.stateSnapshot&&d.stateSnapshot.items||[]).map(it=>`<span style="font-family:var(--mono);font-size:11px;">${esc(it.customer||it.customs||'')}</span>`).join(', ');
-    return `<div class="ship-item"><div class="ship-item-hd"><span class="ship-lbl">${esc(d.label)}</span><span class="ship-meta">${esc(d.savedAt)}</span>
-      <label class="btn tiny" style="cursor:pointer;">📎 Attach<input type="file" style="display:none;" data-dispatch-action="attach" data-idx="${idx}"></label>
-      <button class="btn tiny x" data-dispatch-action="del" data-idx="${idx}">🗑 Delete</button></div>
-      <div style="font-size:12px;color:var(--slate);">Items: ${items}</div>
-      ${docs?`<div class="ship-docs">${docs}</div>`:''}
+    const docs=(d.docs||[]).map((doc,di)=>`<div class="ship-doc-row"><span class="doc-chip">${esc(doc.type||'FILE')}</span><span>${esc(doc.name)}</span><span class="ship-meta">${esc(doc.addedAt||'')}</span><a class="doc-dl" data-dispatch-action="dl-doc" data-idx="${idx}" data-di="${di}">⬇ Download</a></div>`).join('');
+    const items=(d.stateSnapshot&&d.stateSnapshot.items||[]).map(it=>`<b>${esc(it.customer||it.customs||'')}</b>`).join(', ');
+    const ord=d.stateSnapshot&&d.stateSnapshot.order||{};
+    return `<div class="ship-item">
+      <div class="ship-item-hd" style="cursor:pointer;" data-dispatch-action="toggle" data-idx="${idx}">
+        <span class="ship-lbl">${esc(d.label)}</span>
+        <span class="ship-meta">${esc(d.savedAt)}</span>
+        <span style="font-size:11px;color:var(--slate);font-family:var(--mono);">▶ click to expand</span>
+        <button class="btn tiny x" data-dispatch-action="del" data-idx="${idx}">🗑</button>
+      </div>
+      <div class="ship-detail" id="shipDetail${idx}" style="display:none;padding-top:10px;border-top:1px dashed var(--line);margin-top:8px;">
+        <div style="font-size:12px;color:var(--slate);margin-bottom:8px;">Inv: <b>${esc(ord.inv||'—')}</b> &nbsp;|&nbsp; PO: <b>${esc(ord.po||'—')}</b> &nbsp;|&nbsp; Buyer: <b>${esc(ord.buyer||'—')}</b> &nbsp;|&nbsp; Date: ${esc(ord.date||'—')}</div>
+        <div style="font-size:12px;margin-bottom:8px;">Items: ${items}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <label class="btn tiny" style="cursor:pointer;">📎 Attach document<input type="file" style="display:none;" data-dispatch-action="attach" data-idx="${idx}"></label>
+          <button class="btn tiny print" data-dispatch-action="pdf" data-idx="${idx}">🖨 Export PDF / Print</button>
+        </div>
+        ${docs?`<div class="ship-docs">${docs}</div>`:'<p style="font-size:11px;color:var(--muted);">No documents attached yet.</p>'}
+      </div>
     </div>`;
   }).join('');
-  // attach doc-download and delete handlers via delegation
 }
 function saveCurrentDispatch(){
   const label=prompt('Label for this dispatch:',`${state.order.po||''}${state.order.buyer?' – '+state.order.buyer:''}`) ;
@@ -1254,7 +1283,16 @@ document.getElementById('saveDispatchBtn').addEventListener('click',saveCurrentD
 document.getElementById('dispatchList').addEventListener('click',function(e){
   const t=e.target.closest('[data-dispatch-action]'); if(!t)return;
   const act=t.dataset.dispatchAction, idx=+t.dataset.idx, di=+t.dataset.di;
+  if(act==='toggle'){
+    const detail=document.getElementById('shipDetail'+idx); if(!detail)return;
+    const open=detail.style.display!=='none';
+    detail.style.display=open?'none':'block';
+    const hint=t.querySelector('span[style*="mono"]');
+    if(hint)hint.textContent=open?'▶ click to expand':'▼ collapse';
+    return;
+  }
   if(act==='del'){if(!confirm('Delete this dispatch record?'))return;const arr=loadDispatches();arr.splice(idx,1);saveDispatches(arr);renderDispatches();}
+  if(act==='pdf'){dispatchPDF(idx);return;}
   if(act==='dl-doc'){const arr=loadDispatches();const doc=arr[idx]&&arr[idx].docs&&arr[idx].docs[di];if(!doc)return;const a=document.createElement('a');a.href=doc.b64;a.download=doc.name;a.click();}
 });
 document.getElementById('dispatchList').addEventListener('change',function(e){
