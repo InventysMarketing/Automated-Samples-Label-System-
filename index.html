@@ -860,8 +860,27 @@ function renderOuter(){
   /* preview: cap to panel width so very wide outer labels stay readable */
   const maxOW=outerStage.parentElement.offsetWidth||420;
   const dynOS=Math.min(OS+8, (maxOW-40)/(bo.ow)); // +8 vs inner = bigger outer preview
-  const uo=x=>(x*s*dynOS/10)+'px';
+  let sEff=s;
+  const uo=x=>(x*sEff*dynOS/10)+'px';
   outerStage.innerHTML=`<div class="label" style="width:${bo.ow*dynOS}px;height:${bo.oh*dynOS}px;">${outerBody(it,b,state.order.po,uo)}</div>`;
+  /* Post-fit: the preview is width-constrained, so text wraps more than at real
+     print size and can overflow the frame. Measure the real laid-out content and
+     shrink to fit so nothing (e.g. the transport block) gets clipped. */
+  const labEl=outerStage.querySelector('.label');
+  for(let pass=0; pass<3 && labEl; pass++){
+    const padEl=labEl.querySelector('.lab-pad.flow');
+    if(!padEl || labEl.clientHeight<=0) break;
+    const over=padEl.scrollHeight/labEl.clientHeight;
+    if(!isFinite(over) || over<=1.002) break;
+    sEff=sEff/over;
+    if(!isFinite(sEff) || sEff<=0){ sEff=s; break; }
+    labEl.innerHTML=outerBody(it,b,state.order.po,uo);
+  }
+  if(sEff!==s){
+    const pct2=Math.round(sEff*100);
+    fitEl.textContent=`auto-fit ${pct2}%${sEff<0.5?' ⚠ crowded — use a larger bag size':''}`;
+    fitEl.style.color=sEff<0.5?'var(--hazard)':'var(--slate)';
+  }
 }
 const silosEl=document.getElementById('silos');
 function renderSilos(){
@@ -1263,23 +1282,84 @@ function saveDispatches(arr){try{localStorage.setItem(DS_KEY,JSON.stringify(arr)
 function dispatchPDF(idx){
   const arr=loadDispatches(); const d=arr[idx]; if(!d)return;
   const sn=d.stateSnapshot||{}; const ord=sn.order||{}; const items=sn.items||[];
-  const rows=items.map(it=>{
-    const batches=(it.batches||[]).map(b=>`${esc(b.batch||'')} × ${b.qty||''}kg (${b.copies||1} copies)`).join('<br>');
-    return `<tr><td>${esc(it.customer||it.customs||'')}</td><td>${esc(it.cas||'')}</td><td style="font-size:10px;">${batches}</td></tr>`;
+  const tx=sn.tax||{}; const st=ord.shipTransport||{}; const ins=ord.insurance||{};
+  const v=x=>(x===undefined||x===null||x==='')?'—':esc(x);
+  /* a labelled field grid */
+  const field=(k,val)=>`<div class="fld"><span class="fk">${esc(k)}</span><span class="fv">${val}</span></div>`;
+  const orderGrid=[
+    field('Buyer / Consignee',v(ord.buyer)), field('Country',v(ord.country)),
+    field('PO No.',v(ord.po)), field('Invoice No.',v(ord.inv)),
+    field('Invoice date',v(ord.date)), field('Sample type',v(ord.sampleType)),
+    field('USD → INR rate',v(ord.usdToInr)), field('Place of supply',v(ord.placeOfSupply)),
+    field('Buyer address',v(ord.buyerAddress)), field('Buyer contact',v(ord.buyerContact)),
+    field('Port of loading',v(ord.portOfLoading)), field('Payment terms',v(ord.paymentTerms)),
+    field('Prep time',v(ord.prepTime)), field('Removal date / time',(ord.removalDate||'—')+' '+(ord.removalTime||'')),
+  ].join('');
+  const shipGrid=[
+    field('Transport mode',v(st.mode)), field('Carrier / Airline',v(st.carrier)),
+    field('AWB / LR No.',v(st.awb)), field('AWB date',v(st.awbDate)),
+    field('Insurance company',v(ins.company)), field('Policy No.',v(ins.policy)),
+    field('Insurance amount',v(ins.amount)),
+    field('Tax (CGST/SGST/IGST)',`${v(tx.cgst)}% / ${v(tx.sgst)}% / ${v(tx.igst)}%`),
+  ].join('');
+  const itemBlocks=items.map((it,n)=>{
+    const batchRows=(it.batches||[]).map(b=>`<tr><td>${v(b.batch)}</td><td>${v(b.qty)} ${esc(it.unit||'Kg')}</td><td>${v(b.bottleId)}</td><td>${v(b.copies)}</td></tr>`).join('')
+      ||'<tr><td colspan="4" style="color:#999;">No batches</td></tr>';
+    const haz=(it.hazards||[]).map(h=>`<li>${esc(h[0]||'')} — ${esc(h[1]||'')}</li>`).join('')||'<li style="color:#999;">none</li>';
+    const prec=(it.precautions||[]).map(p=>`<li>${esc(p[0]||'')} — ${esc(p[1]||'')}</li>`).join('')||'<li style="color:#999;">none</li>';
+    return `<div class="item-block">
+      <h3>Item ${n+1}: ${v(it.customer||it.customs||it.code)}</h3>
+      <div class="grid">
+        ${field('Product code',v(it.code))}${field('Customer name',v(it.customer))}
+        ${field('Airline name',v(it.airline))}${field('CAS No.',v(it.cas))}
+        ${field('HS code',v(it.hs))}${field('GHS signal',v(it.signal))}
+        ${field('Rate (USD/Kg)',v(it.rate))}${field('Rate (Rs/Kg)',v(it.rateInr))}
+      </div>
+      ${it.customs?`<div class="fld wide"><span class="fk">Customs description</span><span class="fv">${esc(it.customs)}</span></div>`:''}
+      ${it.storage?`<div class="fld wide"><span class="fk">Storage</span><span class="fv">${esc(it.storage)}</span></div>`:''}
+      ${it.transport?`<div class="fld wide"><span class="fk">Transport / DG</span><span class="fv">${esc(it.transport)}</span></div>`:''}
+      <table class="bt"><thead><tr><th>Batch / Lot</th><th>Net weight</th><th>Bottle</th><th>Labels</th></tr></thead><tbody>${batchRows}</tbody></table>
+      <div class="two">
+        <div><b>Hazard statements</b><ul>${haz}</ul></div>
+        <div><b>Precautionary statements</b><ul>${prec}</ul></div>
+      </div>
+    </div>`;
   }).join('');
-  const docs=(d.docs||[]).map(doc=>`<li style="font-size:11px;">${esc(doc.name)} (${esc(doc.type)}) — ${esc(doc.addedAt||'')}</li>`).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(d.label)}</title>
-  <style>body{font-family:Arial,sans-serif;font-size:12px;padding:20mm;}h1{font-size:16px;}h2{font-size:12px;color:#555;margin:16px 0 4px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;font-size:11px;}th{background:#f0f4f8;}</style>
-  </head><body>
+  const docs=(d.docs||[]).map(doc=>`<li>${esc(doc.name)} <span style="color:#888;">(${esc(doc.type)}, added ${esc(doc.addedAt||'')})</span></li>`).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dispatch — ${esc(d.label)}</title>
+  <style>
+    *{box-sizing:border-box;}
+    body{font-family:Georgia,'Times New Roman',serif;color:#111;font-size:12px;padding:16mm 14mm;}
+    h1{font-size:19px;margin:0 0 2px;}
+    .sub{color:#555;font-size:11px;margin:0 0 14px;}
+    h2{font-size:13px;margin:18px 0 7px;border-bottom:2px solid #2f5d8e;padding-bottom:3px;color:#2f5d8e;}
+    h3{font-size:13px;margin:0 0 8px;color:#000;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 18px;margin-bottom:6px;}
+    .fld{display:flex;gap:8px;font-size:11px;padding:2px 0;border-bottom:1px dotted #ddd;}
+    .fld.wide{display:block;margin:4px 0;}
+    .fk{color:#555;min-width:140px;font-weight:bold;}
+    .fv{color:#111;}
+    .item-block{border:1px solid #ccc;border-radius:6px;padding:11px 13px;margin-bottom:12px;page-break-inside:avoid;}
+    table{border-collapse:collapse;width:100%;margin:8px 0;}
+    th,td{border:1px solid #bbb;padding:4px 7px;text-align:left;font-size:11px;}
+    th{background:#eef2f7;}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px;}
+    .two ul{margin:4px 0 0;padding-left:18px;}
+    .two li{font-size:10.5px;margin-bottom:2px;}
+    .foot{margin-top:18px;font-size:10px;color:#888;border-top:1px solid #ddd;padding-top:8px;}
+    @media print{.item-block{page-break-inside:avoid;}}
+  </style></head><body>
   <h1>Dispatch Record — ${esc(d.label)}</h1>
-  <p style="color:#666;">Saved: ${esc(d.savedAt)} &nbsp;|&nbsp; Invoice: ${esc(ord.inv||'')} &nbsp;|&nbsp; PO: ${esc(ord.po||'')} &nbsp;|&nbsp; Buyer: ${esc(ord.buyer||'')} &nbsp;|&nbsp; Date: ${esc(ord.date||'')}</p>
-  <h2>Items</h2>
-  <table><thead><tr><th>Product</th><th>CAS#</th><th>Batches / Qty</th></tr></thead><tbody>${rows}</tbody></table>
-  ${docs?`<h2>Attached Documents</h2><ul>${docs}</ul>`:''}
-  <p style="margin-top:24px;font-size:10px;color:#888;">Inventys Research Company Pvt. Ltd — Exported ${new Date().toLocaleString()}</p>
+  <p class="sub">Saved ${esc(d.savedAt)} &nbsp;·&nbsp; Inventys Research Company Pvt. Ltd</p>
+  <h2>Order details</h2><div class="grid">${orderGrid}</div>
+  <h2>Transport, insurance &amp; tax</h2><div class="grid">${shipGrid}</div>
+  <h2>Items &amp; batches (${items.length})</h2>${itemBlocks||'<p style="color:#999;">No items.</p>'}
+  <h2>Attached documents</h2>${docs?`<ul>${docs}</ul>`:'<p style="color:#999;">None attached.</p>'}
+  <p class="foot">Exported ${new Date().toLocaleString()} from the Inventys Dispatch &amp; Label Console.</p>
   </body></html>`;
   const win=window.open('','_blank');
   if(win){win.document.write(html);win.document.close();win.focus();setTimeout(()=>{win.print();},400);}
+  else { alert('Please allow pop-ups for this site to export the dispatch PDF.'); }
 }
 function renderDispatches(){
   const list=document.getElementById('dispatchList'); if(!list)return;
@@ -1498,6 +1578,8 @@ renderAll();
     if($('topbarAvatar'))$('topbarAvatar').textContent=ini;
     if($('topbarName'))$('topbarName').textContent=name;
     toast('Welcome, '+name+'!');
+    /* re-render now that the app is visible so previews lay out at real width */
+    if(window.renderAll){ try{ renderAll(); }catch(e){} }
   }
 
   /* ── auto-login from session ── */
