@@ -6,6 +6,7 @@
 <title>Reagent — Inventys dispatch & label console</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{
     /* brand palette pulled from the Inventys logo */
@@ -512,7 +513,8 @@
       <div class="ttl">📄 Load SDS / document (optional)</div>
       <div class="grid2" style="align-items:start;">
         <div>
-          <input type="file" id="docFile" accept=".docx,.txt" style="font-size:12px;">
+          <input type="file" id="docFile" accept=".docx,.txt,.pdf,image/*" style="font-size:12px;">
+          <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">PDF · Word (.docx) · text · images accepted. Text is auto-read from PDF/Word/txt.</div>
           <div id="docStatus" style="font-size:11px;color:var(--slate);margin-top:6px;font-family:var(--mono);"></div>
         </div>
         <div>
@@ -1199,24 +1201,39 @@ function printDoc(kind){
 window.onafterprint=()=>document.body.classList.remove('printing');
 
 /* ---- document upload / paste test ---- */
+/* Line-based GHS extractor. Handles combined codes that share ONE description,
+   e.g. "P302+P352+P313+P362+P364-IF ON SKIN: Wash with plenty of water…" is kept
+   as a single statement (one code cell + one description). Also stitches a
+   description that wraps onto following lines back onto its code. */
+function extractStatements(text){
+  const lines=text.split(/\r?\n/);
+  // leading code(s): H/P ### optionally joined by + (with or without repeated H/P)
+  const codeStart=/^[\s•\*\.\)-]*([HP]\d{3}(?:\s*\+\s*[HP]?\d{3,4})*)[\s:.\)–-]+(.+)$/;
+  const sectionHdr=/^\s*(hazard statements?|precautionary statements?|signal word|prevention|response|storage|disposal|ghs|pictogram|h-?statements?|p-?statements?)\b/i;
+  const hz=[], pr=[]; let cur=null;
+  for(const raw of lines){
+    const line=raw.trim();
+    const m=line.match(codeStart);
+    if(m){
+      const code=m[1].replace(/\s+/g,'');      // "P302 + P352" -> "P302+P352"
+      const desc=(m[2]||'').trim();
+      cur={code,desc,kind:code[0].toUpperCase()};
+      (cur.kind==='H'?hz:pr).push(cur);
+    } else if(cur && line && !sectionHdr.test(line) && !/^[HP]\d{3}/.test(line)){
+      cur.desc=(cur.desc+' '+line).trim();      // continuation of the previous description
+    } else {
+      cur=null;
+    }
+  }
+  // de-duplicate by code (first description wins)
+  const dedupe=a=>{const seen={},out=[];a.forEach(s=>{if(!seen[s.code]){seen[s.code]=1;out.push([s.code,s.desc]);}});return out;};
+  return {hz:dedupe(hz), pr:dedupe(pr)};
+}
 function loadTextIntoPreviewed(text,srcName){
   const it=state.items[preview.i]; if(!it){return;}
-  // Extract H-statements: "H315 text", "H315: text", or "text (H315)"
-  const hzSet={}, prSet={};
-  const hPat1=/\b(H\d{3}(?:[+\d]+)*)[:\s]+([^()\n]{3,})/g;
-  const hPat2=/([^()\n]{3,})\s*\((H\d{3}(?:[+\d]+)*)\)/g;
-  const pPat1=/\b(P\d{3}(?:[+\d]+)*)[:\s]+([^()\n]{3,})/g;
-  const pPat2=/([^()\n]{3,})\s*\((P\d{3}(?:[+\d]+)*)\)/g;
-  let m;
-  while((m=hPat1.exec(text))!==null){const c=m[1].trim(),d=m[2].trim();if(!hzSet[c])hzSet[c]=d;}
-  while((m=hPat2.exec(text))!==null){const c=m[2].trim(),d=m[1].trim();if(!hzSet[c])hzSet[c]=d;}
-  while((m=pPat1.exec(text))!==null){const c=m[1].trim(),d=m[2].trim();if(!prSet[c])prSet[c]=d;}
-  while((m=pPat2.exec(text))!==null){const c=m[2].trim(),d=m[1].trim();if(!prSet[c])prSet[c]=d;}
-  const hz=Object.entries(hzSet).map(([c,d])=>[c,d]);
-  const pr=Object.entries(prSet).map(([c,d])=>[c,d]);
+  const {hz,pr}=extractStatements(text);
   if(hz.length)it.hazards=hz;
   if(pr.length)it.precautions=pr;
-  // Signal word
   if(/\bdanger\b/i.test(text))it.signal='Danger';
   else if(/\bwarning\b/i.test(text))it.signal='Warning';
   renderAll();
@@ -1224,14 +1241,40 @@ function loadTextIntoPreviewed(text,srcName){
   const st=document.getElementById('docStatus');
   if(st)st.textContent=`Found ${hz.length} hazard + ${pr.length} precautionary statements [signal: ${sig}]${srcName?' from '+srcName:''} → Item ${preview.i+1}. Check and update as needed.`;
 }
+async function readPdfText(file){
+  if(typeof pdfjsLib==='undefined') throw new Error('pdf reader unavailable');
+  try{ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }catch(e){}
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let out='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p); const content=await page.getTextContent();
+    let lastY=null, line='';
+    for(const itm of content.items){
+      const y=itm.transform[5];
+      if(lastY!==null && Math.abs(y-lastY)>3){ out+=line.trim()+'\n'; line=''; }
+      line+=itm.str+' '; lastY=y;
+    }
+    out+=line.trim()+'\n';
+  }
+  return out;
+}
 document.getElementById('docFile').addEventListener('change',function(e){
   const f=e.target.files[0]; if(!f)return;
   const st=document.getElementById('docStatus'); st.textContent='Reading '+f.name+'…';
-  if(f.name.toLowerCase().endsWith('.txt')){const r=new FileReader();r.onload=()=>loadTextIntoPreviewed(r.result,f.name);r.readAsText(f);}
-  else if(f.name.toLowerCase().endsWith('.docx')){
+  const name=f.name.toLowerCase();
+  if(name.endsWith('.txt')){const r=new FileReader();r.onload=()=>loadTextIntoPreviewed(r.result,f.name);r.readAsText(f);}
+  else if(name.endsWith('.docx')){
     if(typeof mammoth==='undefined'){st.textContent='Could not load the .docx reader (offline?). Paste the text instead.';return;}
     const r=new FileReader();r.onload=()=>{mammoth.extractRawText({arrayBuffer:r.result}).then(res=>loadTextIntoPreviewed(res.value,f.name)).catch(()=>{st.textContent='Could not read that .docx. Paste the text instead.';});};r.readAsArrayBuffer(f);
-  } else st.textContent='Please upload a .docx or .txt file (or paste the text).';
+  }
+  else if(name.endsWith('.pdf')){
+    readPdfText(f).then(txt=>loadTextIntoPreviewed(txt,f.name)).catch(()=>{st.textContent='Could not read that PDF (it may be a scanned image). Paste the text instead.';});
+  }
+  else if(f.type.startsWith('image/')){
+    st.textContent='Image attached ('+f.name+'). Statements can’t be auto-read from a picture — please type or paste them, or attach the image to the dispatch record for filing.';
+  }
+  else st.textContent='Unsupported file. Use PDF, Word (.docx), text, or an image — or paste the text.';
 });
 
 function renderAll(){renderForm();renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
@@ -1268,11 +1311,33 @@ document.body.addEventListener('click',e=>{
   // syncInrBtn handled via id click below
   renderAll();
 });
-document.getElementById('syncInrBtn').addEventListener('click',function(){
-  const rate=parseFloat(state.order.usdToInr)||85;
+document.getElementById('syncInrBtn').addEventListener('click',async function(){
+  const st=document.getElementById('docStatus');
+  const btn=this, old=btn.textContent;
+  btn.textContent='↻ fetching…'; btn.disabled=true;
+  let rate=parseFloat(state.order.usdToInr)||85, live=false;
+  /* fetch the current live USD→INR rate (free, no API key). Falls back to the
+     manual rate if the browser is offline or the services can't be reached. */
+  try{
+    const r=await fetch('https://open.er-api.com/v6/latest/USD');
+    const j=await r.json();
+    if(j&&j.rates&&j.rates.INR){ rate=j.rates.INR; live=true; }
+  }catch(e){
+    try{
+      const r2=await fetch('https://api.frankfurter.app/latest?from=USD&to=INR');
+      const j2=await r2.json();
+      if(j2&&j2.rates&&j2.rates.INR){ rate=j2.rates.INR; live=true; }
+    }catch(e2){}
+  }
+  state.order.usdToInr=rate.toFixed(2);
+  const inrInput=document.querySelector('[data-path="order.usdToInr"]');
+  if(inrInput) inrInput.value=rate.toFixed(2);
   state.items.forEach(it=>{it.rateInr=(parseFloat(it.rate||0)*rate).toFixed(2);});
   renderAll();
-  const st=document.getElementById('docStatus');if(st){st.textContent='INR rates synced at 1 USD = '+rate.toFixed(2)+' INR.';}
+  btn.textContent=old; btn.disabled=false;
+  if(st){ st.textContent = live
+    ? `Live rate fetched: 1 USD = ₹${rate.toFixed(2)} — item INR rates updated.`
+    : `Couldn't reach the live-rate service (offline?). Used manual rate 1 USD = ₹${rate.toFixed(2)}.`; }
 });
 
 /* ---- Dispatch storage (Feature 6) ---- */
