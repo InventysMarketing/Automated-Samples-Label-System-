@@ -1206,21 +1206,38 @@ window.onafterprint=()=>document.body.classList.remove('printing');
    as a single statement (one code cell + one description). Also stitches a
    description that wraps onto following lines back onto its code. */
 function extractStatements(text){
+  text=text.replace(/\ben-US\b/gi,' ');          // strip tagged-PDF language markers
   const lines=text.split(/\r?\n/);
   // leading code(s): H/P ### optionally joined by + (with or without repeated H/P)
   const codeStart=/^[\s•\*\.\)-]*([HP]\d{3}(?:\s*\+\s*[HP]?\d{3,4})*)[\s:.\)–-]+(.+)$/;
-  const sectionHdr=/^\s*(hazard statements?|precautionary statements?|signal word|prevention|response|storage|disposal|ghs|pictogram|h-?statements?|p-?statements?)\b/i;
+  // lines that mark a NEW section — stop stitching the previous statement here
+  const sectionHdr=/^\s*(hazard statements?|precautionary statements?|signal word|prevention|response|storage|disposal|handling|first[\s-]?aid|precautions for|conditions for safe|incompatible|section\s*\d|\d+\.\d+\b|ghs|pictogram|h-?statements?|p-?statements?)\b/i;
+  // boilerplate / footer text that must never be swallowed into a statement
+  const STOP=/(see\s+www|www\.|https?:\/\/|reverse\s+side|terms?\s+and\s+conditions|packing\s+slip|for\s+additional\s+terms|revision\s+date|date\s+of\s+printing|page\s+\d+\s+of\s+\d+|tel\s*:|fax\s*:|©|®)/i;
+  // cut a description at the first boilerplate/section marker and cap runaway length
+  function clean(s){
+    s=s.trim();
+    const hit=s.search(STOP); if(hit>=0) s=s.slice(0,hit).trim();
+    if(s.length>360){ const cut=s.lastIndexOf('. ',360); s=(cut>60?s.slice(0,cut+1):s.slice(0,360)).trim(); }
+    return s;
+  }
   const hz=[], pr=[]; let cur=null;
   for(const raw of lines){
-    const line=raw.trim();
+    const line=raw.replace(/\s+/g,' ').trim();
+    if(!line){cur=null;continue;}
     const m=line.match(codeStart);
     if(m){
       const code=m[1].replace(/\s+/g,'');      // "P302 + P352" -> "P302+P352"
-      const desc=(m[2]||'').trim();
-      cur={code,desc,kind:code[0].toUpperCase()};
+      cur={code,desc:clean(m[2]||''),kind:code[0].toUpperCase()};
       (cur.kind==='H'?hz:pr).push(cur);
-    } else if(cur && line && !sectionHdr.test(line) && !/^[HP]\d{3}/.test(line)){
-      cur.desc=(cur.desc+' '+line).trim();      // continuation of the previous description
+      if(STOP.test(m[2]||'')) cur=null;          // boilerplate began on the same line
+    } else if(cur && !sectionHdr.test(line) && !/^[HP]\d{3}/.test(line)){
+      if(STOP.test(line)){                        // boilerplate begins -> keep head, then close
+        const head=clean(line); if(head) cur.desc=clean(cur.desc+' '+head);
+        cur=null;
+      } else {
+        cur.desc=clean(cur.desc+' '+line);        // genuine wrapped continuation
+      }
     } else {
       cur=null;
     }
