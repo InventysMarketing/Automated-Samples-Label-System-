@@ -748,9 +748,17 @@ function outerBody(it,b,po,u){
     </div>
     <div class="lab-div"></div>
     ${it.hazards.length?`<div class="lab-sec" style="font-size:${u(2.5)};color:#c2410c;margin-bottom:${u(.35)};">⚠ HAZARD STATEMENTS</div>
-    ${it.hazards.map(h=>`<div class="lab-haz-row" style="font-size:${u(2.25)};margin-bottom:${u(.2)};line-height:1.25;">${h[0]?`<span class="lab-haz-code" style="font-size:${u(2.25)};min-width:${u(8.5)};">${esc(h[0])}</span>`:''}<span>${esc(h[1])}</span></div>`).join('')}<div style="height:${u(.5)};"></div>`:''}
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:${u(2.25)};line-height:1.25;">
+    ${it.hazards.map(h=>`<tr>
+      <td style="width:19ch;vertical-align:top;font-family:var(--label-mono);color:#c2410c;font-weight:600;word-break:break-all;padding:0 ${u(1.5)} ${u(.35)} 0;">${esc(h[0])||''}</td>
+      <td style="vertical-align:top;padding:0 0 ${u(.35)} 0;">${esc(h[1])}</td>
+    </tr>`).join('')}</table><div style="height:${u(.5)};"></div>`:''}
     ${it.precautions.length?`<div class="lab-sec" style="font-size:${u(2.5)};margin-bottom:${u(.35)};">PRECAUTIONARY STATEMENTS</div>
-    ${it.precautions.map(p=>`<div class="lab-haz-row" style="font-size:${u(2.25)};margin-bottom:${u(.2)};line-height:1.25;">${p[0]?`<span class="lab-v" style="color:#555;flex:none;min-width:${u(8.5)};font-size:${u(2.25)};">${esc(p[0])}</span>`:''}<span>${esc(p[1])}</span></div>`).join('')}<div style="height:${u(.5)};"></div>`:''}
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:${u(2.25)};line-height:1.25;">
+    ${it.precautions.map(p=>`<tr>
+      <td style="width:19ch;vertical-align:top;font-family:var(--label-mono);color:#555;font-weight:600;word-break:break-all;padding:0 ${u(1.5)} ${u(.35)} 0;">${esc(p[0])||''}</td>
+      <td style="vertical-align:top;padding:0 0 ${u(.35)} 0;">${esc(p[1])}</td>
+    </tr>`).join('')}</table><div style="height:${u(.5)};"></div>`:''}
     ${it.storage?`<div class="lab-sec" style="font-size:${u(2.5)};margin-bottom:${u(.25)};">STORAGE</div>
     <div style="font-family:var(--label-sans);font-size:${u(2.25)};color:#333;line-height:1.3;">${esc(it.storage)}</div><div style="height:${u(.5)};"></div>`:''}
     ${it.transport?`<div style="background:#f0f5ff;border:${u(.5)} solid #b8d0f0;border-radius:${u(1)};padding:${u(1.5)} ${u(2)};margin-top:${u(.3)};">
