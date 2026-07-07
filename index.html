@@ -599,24 +599,21 @@
   <p class="eyebrow">Invoice</p>
   <div class="inv-card">
     <div class="inv-top">
-      <span class="toggle t-mode" id="modeToggle">
-        <button data-action="mode" data-mode="proforma" class="on">Proforma · USD</button>
-        <button data-action="mode" data-mode="gst">GST Tax Invoice · INR</button>
+      <span class="toggle" id="docToggle">
+        <button data-action="doc" data-doc="proforma" class="on">Proforma Invoice</button>
+        <button data-action="doc" data-doc="invoice">Tax Invoice · GST</button>
+        <button data-action="doc" data-doc="packing">Packing List</button>
       </span>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <span class="toggle" id="paidToggle" style="display:none;">
-          <button data-action="paid" data-paid="false" class="on">Gratis — Proforma</button>
-          <button data-action="paid" data-paid="true">Paid — Commercial</button>
-        </span>
         <span class="toggle" id="audToggle">
           <button data-action="aud" data-aud="customer" class="on">Customer</button>
           <button data-action="aud" data-aud="airline">Airline</button>
           <button data-action="aud" data-aud="customs">Customs</button>
         </span>
-        <button class="btn print tiny" data-action="print" data-kind="invoice">🖶 Print / Save invoice (PDF)</button>
+        <button class="btn print tiny" data-action="print" data-kind="invoice">🖶 Print / Save (PDF)</button>
       </div>
     </div>
-    <p style="font-size:11px;color:var(--slate);margin:0 0 4px;">Click anywhere in the invoice table to zoom &amp; print</p>
+    <p style="font-size:11px;color:var(--slate);margin:0 0 4px;">Pick the document (Proforma / Tax Invoice / Packing List) and the copy (Customer / Airline / Customs). Click the preview to zoom &amp; print.</p>
     <div id="invArea"></div>
     <div class="note" id="invNote"></div>
   </div>
@@ -696,7 +693,7 @@ let state={
   tax:{cgst:'0',sgst:'0',igst:'18'},
   items:[ mk('DETDA-Cl',[{batch:'DETDA-Cl/260609-020',qty:'0.100',bottleId:'b250',copies:'1'}],'16.67','47450') ],
 };
-let preview={i:0,b:0}, aud='customer', invMode='proforma', invPaid=false;
+let preview={i:0,b:0}, aud='customer', docType='proforma';
 function setPath(p,v){const a=p.split('.');let o=state;for(let k=0;k<a.length-1;k++)o=o[isNaN(a[k])?a[k]:+a[k]];const l=a[a.length-1];o[isNaN(l)?l:+l]=v;}
 function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 const US=x=>(x*SCALE/10)+'px';
@@ -932,10 +929,19 @@ function lineMetrics(it){
 }
 function renderInvoice(){
   const area=document.getElementById('invArea'), note=document.getElementById('invNote');
-  document.getElementById('audToggle').style.display=(invMode==='proforma')?'inline-flex':'none';
-  document.getElementById('paidToggle').style.display=(invMode==='proforma')?'inline-flex':'none';
-  if(invMode==='proforma'){
-    const title=invPaid?'COMMERCIAL INVOICE':'PROFORMA INVOICE';
+  if(docType==='packing'){
+    let rows='',totPkgs=0,totNet=0;
+    state.items.forEach((it,i)=>{const m=lineMetrics(it);totPkgs+=m.pkgs;totNet+=m.totNet;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
+      rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(nameFor(it))}</div>${bb?`<div class="inv-sub">Batch/Lot: ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td>Sample for R&amp;D</td></tr>`;});
+    area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:8px;">PACKING LIST — ${aud.toUpperCase()} COPY</div>
+      <table class="inv"><thead><tr><th style="width:34px;">S.No</th><th>Description</th><th class="r" style="width:70px;">Pkgs</th><th class="r" style="width:100px;">Net/Pkg (Kg)</th><th class="r" style="width:110px;">Total Net (Kg)</th><th style="width:130px;">Remarks</th></tr></thead><tbody>${rows}</tbody>
+      <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td>Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
+      <div class="inv-totals"><div class="inv-words">No commercial value — packing list only. ${totPkgs} package(s), total net ${totNet.toFixed(3)} Kg.</div></div>`;
+    note.innerHTML='<b>PACKING LIST</b> — no prices; shows packages, net weight and remarks. Uses the chosen name (Customer / Airline / Customs).';
+    return;
+  }
+  if(docType==='proforma'){
+    const title='PROFORMA INVOICE';
     let sub=0,rows='';
     state.items.forEach((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rate)||0,amt=m.totNet*rate;sub+=amt;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');
       rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(nameFor(it))}</div>${bb?`<div class="inv-sub">BATCH # ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rate" value="${esc(it.rate)}"></td><td class="r">${amt.toFixed(2)}</td></tr>`;});
@@ -1018,15 +1024,126 @@ function innerSheetHTML(){return sheetHTML(innerCells());}
 function outerSheetHTML(){return sheetHTML(outerCells());}
 const SUP=`<div class="ico"><img src="${LOGO}" style="height:12mm;width:${12*LOGO_AR}mm;object-fit:contain;display:block;margin-bottom:3px;"><h1>Inventys Research Company Pvt. Ltd</h1><p>901C Tower 2, One International Centre, Senapati Bapat Marg, Prabhadevi, Mumbai 400013, India</p><p>Factory: K-38, Five Star Industrial Area, MIDC, Butibori, Nagpur 441122</p><p>Tel +91 22 7140 0200 · GSTIN 27AABCI4415K1ZL · IEC 0306019141</p></div>`;
 function partiesHTML(){return `<div class="parties"><div class="b"><div class="lbl">BUYER</div><b>${esc(state.order.buyer)}</b><br>${esc(state.order.country)}</div><div class="b"><div class="lbl">CONSIGNEE</div><b>${esc(state.order.buyer)}</b><br>${esc(state.order.country)}</div></div>`;}
+/* ---- shared document building blocks (match the Inventys Excel layout) ---- */
+const COMPANY_LEFT=`
+  <div style="font-size:10pt;font-weight:700;letter-spacing:.02em;">INVENTYS RESEARCH COMPANY PRIVATE LIMITED</div>
+  <div style="font-size:8pt;font-weight:600;color:#333;">(100% Export Oriented Unit)</div>
+  <div style="font-size:7.5pt;margin-top:3px;line-height:1.4;color:#444;">
+    Regd. Off: 901C Tower 2, One International Centre, Senapati Bapat Marg, Prabhadevi, Mumbai 400013. INDIA.<br>
+    Phone: +91-22-71400200 &nbsp; Fax: +91-22-71400299 &nbsp; E-mail: commercial@inventys.in<br>
+    Factory: K-38, Five Star Industrial Area, MIDC, Butibori, Nagpur-441122
+  </div>
+  <div style="font-size:7.5pt;margin-top:5px;line-height:1.55;">
+    <b>GSTIN No.</b> 27AABCI4415K1ZL &nbsp;|&nbsp; <b>IEC No.</b> 0306019141 &nbsp;|&nbsp; Udyam UDYAM-MH-19-0033403
+  </div>`;
+function docHeader(title,sub,noLabel){return `
+  <table style="width:100%;border-collapse:collapse;border:1px solid #666;">
+    <tr>
+      <td style="width:65%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;">${COMPANY_LEFT}</td>
+      <td style="width:35%;padding:6px 8px;vertical-align:top;text-align:center;">
+        <div style="font-size:12pt;font-weight:700;letter-spacing:.04em;border-bottom:1.5px solid #333;padding-bottom:4px;margin-bottom:5px;">${title}</div>
+        <div style="font-size:8pt;color:#555;">${sub}</div>
+        <div style="font-size:8pt;margin-top:5px;text-align:left;line-height:1.6;">
+          <b>${noLabel} No:</b> ${esc(state.order.inv)}<br>
+          <b>Date:</b> ${esc(state.order.date)}<br>
+          <b>Reference / PO:</b> ${esc(state.order.po)||'—'}
+        </div>
+      </td>
+    </tr>
+  </table>`;}
+function docParties(){
+  const o=state.order, addr=o.buyerAddress||o.country, port='Mumbai / Nagpur, India';
+  return `<table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;">
+    <tr>
+      <td style="width:37%;padding:5px 7px;border-right:1px solid #666;vertical-align:top;"><b>BUYER</b><br><b>${esc(o.buyer)}</b><br>${esc(addr)}<br>${o.buyerContact?'ATTN / Contact: '+esc(o.buyerContact):''}</td>
+      <td style="width:37%;padding:5px 7px;border-right:1px solid #666;vertical-align:top;"><b>CONSIGNEE</b><br><b>${esc(o.buyer)}</b><br>${esc(addr)}<br>${o.buyerContact?'ATTN / Contact: '+esc(o.buyerContact):''}</td>
+      <td style="width:26%;padding:5px 7px;vertical-align:top;"><b>Port of Origin:</b> ${esc(port)}<br><b>Port of Discharge:</b> ${esc(o.portOfLoading||o.country)}<br><b>Delivery Mode:</b> ${esc((o.shipTransport||{}).mode||'By Air')}</td>
+    </tr>
+  </table>`;}
+function docMeta(){
+  const o=state.order, st=o.shipTransport||{};
+  return `<table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;">
+    <tr><td style="padding:4px 7px;line-height:1.6;">
+      <b>Payment:</b> ${esc(o.paymentTerms||(o.sampleType==='paid'?'As per agreed terms':'Free of cost sample — For R&D purpose, not for sale'))} &nbsp;·&nbsp;
+      <b>Delivery:</b> ${esc(st.mode||'By Air (Door Delivery)')} &nbsp;·&nbsp;
+      <b>Transportation:</b> ${esc(st.carrier||st.mode||'By Air')}${st.awb?' · AWB '+esc(st.awb):''} &nbsp;·&nbsp;
+      <b>Remarks:</b> ${esc(o.placeOfSupply?('Place of Supply: '+o.placeOfSupply):'—')}
+    </td></tr>
+  </table>`;}
+const BANK_TERMS=`
+  <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;">
+    <tr>
+      <td style="width:55%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;">
+        <b>Bank Details</b><br>PLEASE REMIT PAYMENT TO<br><b>AXIS BANK LIMITED</b><br>
+        Fortune 2000, Ground Floor, Bharat Nagar, Bandra Kurla Complex, Bandra (East), Mumbai-400051, INDIA<br>
+        For credit to: <b>INVENTYS RESEARCH COMPANY PVT. LTD.</b><br>
+        <b>SWIFT:</b> AXISINBB230 &nbsp; <b>A/C No.:</b> 915020013285666 &nbsp; <b>IFSC:</b> UTIB0001543
+      </td>
+      <td style="width:45%;padding:6px 8px;vertical-align:top;">
+        <b>Terms:</b>
+        <ol style="margin:3px 0 0 14px;padding:0;line-height:1.45;">
+          <li>Payment by crossed demand draft, cheque or RTGS as per invoice terms.</li>
+          <li>Interest @24% if payment not received within 30 days of dispatch.</li>
+          <li>All claims must be notified in writing within 7 days.</li>
+          <li>Our risk responsibility ceases on dispatch of goods from our godown.</li>
+          <li>In case of legal dispute the forum shall always be Mumbai.</li>
+        </ol>
+        <div style="margin-top:3px;font-weight:700;">E &amp; O. E.</div>
+      </td>
+    </tr>
+  </table>`;
 function proformaPrint(){
-  let sub=0;const rows=state.items.map((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rate)||0,amt=m.totNet*rate;sub+=amt;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');return `<tr><td class="r">${i+1}</td><td><b>${esc(nameFor(it))}</b>${bb?`<br><span style="font-family:var(--label-mono);font-size:7pt;">BATCH # ${esc(bb)}</span>`:''}<br><span style="font-family:var(--label-mono);font-size:7pt;">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</span></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r">${rate.toFixed(4)}</td><td class="r">${amt.toFixed(2)}</td></tr>`;}).join('');
-  const al=aud.toUpperCase();
-  const invTitle=invPaid?'COMMERCIAL INVOICE':'PROFORMA INVOICE';
-  const gratisLine=(!invPaid)?`<p style="font-size:8pt;font-style:italic;color:#555;margin:3px 0 0;">Gratis / Research Sample — No commercial value</p>`:'';
-  return `<div class="pinv"><div class="ihead">${SUP}<div class="ibadge"><div class="t">${invTitle}</div><p style="font-size:8pt;margin-top:5px;">No: ${esc(state.order.inv)}</p><p style="font-size:8pt;">Date: ${esc(state.order.date)}</p><p style="font-size:8pt;">PO: ${esc(state.order.po)}</p></div></div>${partiesHTML()}${gratisLine}
-  <table class="pinvt"><thead><tr><th style="width:6%;">#</th><th>Description</th><th class="r" style="width:13%;">Qty (Kg)</th><th class="r" style="width:15%;">Rate (USD/Kg)</th><th class="r" style="width:15%;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
-  <div class="ptot"><div class="r g"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div></div><div class="pwords">Amount in words: ${wordsUSD(sub)}</div>
-  <div class="pfoot">Bank: AXIS BANK LIMITED, Mumbai · A/C 915020013285666 · SWIFT AXISINBB230 · IFSC UTIB0000230<br>IEC: 0306019141 · GSTIN: 27AABCI4415K1ZL<br>Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.<br><br>For Inventys Research Company Pvt Ltd &nbsp;&nbsp;&nbsp;&nbsp; (Authorized Signatory)</div></div>`;
+  let sub=0;
+  const rows=state.items.map((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rate)||0,amt=m.totNet*rate;sub+=amt;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');
+    return `<tr>
+      <td class="r" style="width:5%;">${i+1}</td>
+      <td style="width:44%;"><b>${esc(nameFor(it))}</b>${bb?`<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">Batch # ${esc(bb)}</span>`:''}<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}${it.hs?' · HS: '+esc(it.hs):''}</span></td>
+      <td class="r" style="width:13%;">${m.totNet.toFixed(3)}</td>
+      <td class="r" style="width:17%;">${rate.toFixed(4)}</td>
+      <td class="r" style="width:16%;">${amt.toFixed(2)}</td>
+    </tr>`;}).join('');
+  const gratis=state.order.sampleType!=='paid';
+  return `<div class="pinv" style="font-size:9pt;">
+    ${docHeader('PROFORMA INVOICE','(USD Terms)','Invoice')}
+    ${docParties()}
+    <table class="pinvt" style="border-top:none;"><thead><tr style="background:#fbe6d5;">
+      <th style="width:5%;">No.</th><th style="width:44%;">Description of Goods</th><th class="r" style="width:13%;">Qty (Kg)</th><th class="r" style="width:17%;">Rate (USD/Kg)</th><th class="r" style="width:16%;">Amount (USD)</th>
+    </tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td class="r">Sub Total</td><td class="r">${state.items.reduce((s,it)=>s+lineMetrics(it).totNet,0).toFixed(3)}</td><td></td><td class="r">USD ${sub.toFixed(2)}</td></tr></tfoot></table>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Amount in words:</b> ${wordsUSD(sub)}${gratis?' &nbsp; <span style="font-style:italic;color:#555;">(Free / Research sample — value for customs purposes only)</span>':''}</td></tr></table>
+    ${docMeta()}
+    ${BANK_TERMS}
+    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;"><tr>
+      <td style="width:65%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;">Declaration: We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</td>
+      <td style="width:35%;padding:6px 8px;text-align:center;vertical-align:top;">For <b>Inventys Research Company Pvt. Ltd.</b><br><br><br>(Authorised Signatory)</td>
+    </tr></table>
+  </div>`;
+}
+function packingPrint(){
+  let totPkgs=0,totNet=0;
+  const rows=state.items.map((it,i)=>{const m=lineMetrics(it);totPkgs+=m.pkgs;totNet+=m.totNet;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
+    return `<tr>
+      <td class="r" style="width:5%;">${i+1}</td>
+      <td style="width:42%;"><b>${esc(nameFor(it))}</b>${bb?`<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">Batch/Lot # ${esc(bb)}</span>`:''}<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}${it.hs?' · HS: '+esc(it.hs):''}</span></td>
+      <td class="r" style="width:10%;">${m.pkgs}</td>
+      <td class="r" style="width:13%;">${perPkg.toFixed(3)}</td>
+      <td class="r" style="width:13%;">${m.totNet.toFixed(3)}</td>
+      <td style="width:17%;">Sample for R&amp;D</td>
+    </tr>`;}).join('');
+  return `<div class="pinv" style="font-size:9pt;">
+    ${docHeader('PACKING LIST','('+aud.toUpperCase()+' Copy)','Packing List')}
+    ${docParties()}
+    <table class="pinvt" style="border-top:none;"><thead><tr style="background:#dce6f0;">
+      <th style="width:5%;">S.No</th><th style="width:42%;">Description of Goods</th><th class="r" style="width:10%;">No. of Pkg.</th><th class="r" style="width:13%;">Net Wt / Pkg. Kg</th><th class="r" style="width:13%;">Total Net Wt Kg</th><th style="width:17%;">Remarks</th>
+    </tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td class="r">Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Total packages:</b> ${totPkgs} &nbsp;·&nbsp; <b>Total net weight:</b> ${totNet.toFixed(3)} Kg &nbsp;·&nbsp; <span style="font-style:italic;color:#555;">No commercial value — packing list only.</span></td></tr></table>
+    ${docMeta()}
+    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;"><tr>
+      <td style="width:65%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;">Goods &amp; Service Tax Details: GSTIN 27AABCI4415K1ZL · IEC 0306019141 · 100% Export Oriented Unit.</td>
+      <td style="width:35%;padding:6px 8px;text-align:center;vertical-align:top;">For <b>Inventys Research Company Pvt. Ltd.</b><br><br><br>(Authorised Signatory)</td>
+    </tr></table>
+  </div>`;
 }
 function gstPrint(){
   const cg=parseFloat(state.tax.cgst)||0,sg=parseFloat(state.tax.sgst)||0,ig=parseFloat(state.tax.igst)||0;
@@ -1201,7 +1318,7 @@ function printDoc(kind){
   let html='';
   if(kind==='labels')html=innerSheetHTML();
   else if(kind==='outer')html=outerSheetHTML();
-  else if(kind==='invoice')html=(invMode==='proforma')?proformaPrint():gstPrint();
+  else if(kind==='invoice')html=docType==='invoice'?gstPrint():docType==='packing'?packingPrint():proformaPrint();
   document.getElementById('printRoot').innerHTML=html;
   document.body.classList.add('printing');
   setTimeout(()=>window.print(),60);
@@ -1321,7 +1438,7 @@ document.body.addEventListener('click',e=>{
   const a=t.dataset.action,i=+t.dataset.i,b=+t.dataset.b,j=+t.dataset.j,kind=t.dataset.kind;
   if(a==='print'){printDoc(t.dataset.kind);return;}
   if(a==='loadpaste'){loadTextIntoPreviewed(document.getElementById('pasteBox').value,'pasted text');return;}
-  if(a==='mode'){invMode=t.dataset.mode;document.querySelectorAll('#modeToggle button').forEach(x=>x.classList.toggle('on',x.dataset.mode===invMode));renderInvoice();return;}
+  if(a==='doc'){docType=t.dataset.doc;document.querySelectorAll('#docToggle button').forEach(x=>x.classList.toggle('on',x.dataset.doc===docType));renderInvoice();return;}
   if(a==='aud'){aud=t.dataset.aud;document.querySelectorAll('#audToggle button').forEach(x=>x.classList.toggle('on',x.dataset.aud===aud));renderInvoice();return;}
   if(a==='add-item')state.items.push(blankItem());
   else if(a==='del-item'){state.items.splice(i,1);if(preview.i>=state.items.length)preview={i:0,b:0};}
@@ -1331,8 +1448,6 @@ document.body.addEventListener('click',e=>{
   else if(a==='silo'){const cur=state.items[preview.i]&&state.items[preview.i].batches[preview.b];if(cur)cur.bottleId=t.dataset.id;}
   else if(a==='add-stmt')state.items[i][kind].push(['','']);
   else if(a==='del-stmt')state.items[i][kind].splice(j,1);
-  // paid toggle
-  if(a==='paid'){invPaid=t.dataset.paid==='true';document.querySelectorAll('#paidToggle button').forEach(x=>x.classList.toggle('on',x.dataset.paid===(invPaid?'true':'false')));renderInvoice();return;}
   // syncInrBtn handled via id click below
   renderAll();
 });
@@ -1551,7 +1666,7 @@ renderDispatches();
   /* invoice zoom: clicking #invArea opens a zoomed printable view */
   document.getElementById('invArea').addEventListener('click',function(e){
     if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return; // don't intercept edits
-    const html=invMode==='proforma'?proformaPrint():gstPrint();
+    const html=docType==='invoice'?gstPrint():docType==='packing'?packingPrint():proformaPrint();
     open(`<div style="width:190mm;padding:5mm;box-sizing:border-box;">${html}</div>`,'invoice');
   });
   window._openPreviewModal=open;
