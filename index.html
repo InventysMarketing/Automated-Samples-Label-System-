@@ -9,9 +9,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{
-    /* brand palette pulled from the Inventys logo */
-    --blue:#2f5d8e; --green:#6fae3d; --orange:#ec6e1f; --yellow:#e8a81d;
-    --blue-tint:#e7eef5; --green-tint:#eef6e6; --orange-tint:#fdeee2;
+    /* brand palette sampled directly from the Inventys logo */
+    --blue:#3a5a96; --indigo:#464a90; --green:#5ea637; --orange:#ef6a22; --yellow:#f0a02e;
+    --blue-tint:#e8edf6; --green-tint:#eef6e4; --orange-tint:#fdeadd;
+    --brand-grad:linear-gradient(90deg,#464a90,#3a5a96 22%,#5ea637 55%,#f0a02e 80%,#ef6a22);
     --ink:#0b0f17; --slate:#3a4860; --muted:#75839a;
     --paper:#eef1f5; --surface:#fff; --line:#d6dde7; --line-soft:#e7ebf1;
     --azure:#1b6ca8; --hazard:#c2410c;
@@ -24,7 +25,7 @@
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;}
   body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;}
-  .topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--ink);color:#e6ecf3;border-bottom:4px solid;border-image:linear-gradient(90deg,var(--blue),var(--green) 45%,var(--yellow) 70%,var(--orange)) 1;}
+  .topbar{display:flex;align-items:center;gap:16px;padding:12px 22px;background:var(--ink);color:#e6ecf3;border-bottom:4px solid;border-image:var(--brand-grad) 1;}
   .brand{display:flex;align-items:baseline;gap:9px;}
   .brand .mark{font-family:var(--serif);font-weight:700;font-style:italic;letter-spacing:.01em;font-size:19px;background:linear-gradient(90deg,#9cc7ee,var(--green),var(--orange));-webkit-background-clip:text;background-clip:text;color:transparent;}
   .brand .sub{font-family:var(--serif);font-size:12.5px;color:#aebccd;}
@@ -203,9 +204,10 @@
   }
   @keyframes lgIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
   .lg-header{
-    background:linear-gradient(90deg,var(--blue),#1e5f99);
-    padding:28px 32px 22px;color:#fff;
+    background:linear-gradient(135deg,var(--indigo),var(--blue) 55%,#2f6f4e);
+    padding:28px 32px 22px;color:#fff;position:relative;
   }
+  .lg-header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--brand-grad);}
   .lg-logo-row{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
   .lg-logo-mark{
     font-family:var(--mono);font-weight:700;letter-spacing:.16em;font-size:18px;
@@ -257,7 +259,7 @@
   }
   .lg-btn{
     width:100%;padding:11px;font-size:14px;font-weight:600;
-    background:linear-gradient(90deg,var(--blue),#1e5f99);
+    background:linear-gradient(90deg,var(--indigo),var(--blue));
     color:#fff;border:none;border-radius:8px;cursor:pointer;
     margin-top:18px;letter-spacing:.01em;transition:opacity .15s,transform .1s;
   }
@@ -1037,7 +1039,8 @@ const COMPANY_LEFT=`
     <b>GSTIN No.</b> 27AABCI4415K1ZL &nbsp;|&nbsp; <b>IEC No.</b> 0306019141 &nbsp;|&nbsp; Udyam UDYAM-MH-19-0033403
   </div>`;
 function docHeader(title,sub,noLabel){return `
-  <table style="width:100%;border-collapse:collapse;border:1px solid #666;">
+  <div style="height:5px;background:linear-gradient(90deg,#464a90,#3a5a96 22%,#5ea637 55%,#f0a02e 80%,#ef6a22);"></div>
+  <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;">
     <tr>
       <td style="width:65%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;">${COMPANY_LEFT}</td>
       <td style="width:35%;padding:6px 8px;vertical-align:top;text-align:center;">
