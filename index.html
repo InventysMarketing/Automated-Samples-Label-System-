@@ -515,8 +515,8 @@
       <div class="ttl">📄 Load SDS / document (optional)</div>
       <div class="grid2" style="align-items:start;">
         <div>
-          <input type="file" id="docFile" accept=".docx,.txt,.pdf,image/*" style="font-size:12px;">
-          <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">PDF · Word (.docx) · text · images accepted. Text is auto-read from PDF/Word/txt.</div>
+          <input type="file" id="docFile" accept=".docx,.txt,.pdf,image/*" multiple style="font-size:12px;">
+          <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">Select one or many files (PDF · Word · text · images). Each SDS/CoA becomes its own item; batch numbers are read in automatically. You'll get a confirmation once loaded.</div>
           <div id="docStatus" style="font-size:11px;color:var(--slate);margin-top:6px;font-family:var(--mono);"></div>
         </div>
         <div>
@@ -529,33 +529,64 @@
     <div class="card accent-blue">
       <div class="ttl">Order details</div>
       <div class="grid4">
-        <label class="f"><span class="lab">Buyer / consignee</span><input class="in" data-path="order.buyer" value="Arxada AG"></label>
-        <label class="f"><span class="lab">Country</span><input class="in" data-path="order.country" value="Switzerland"></label>
         <label class="f"><span class="lab">PO <span class="mono">no.</span></span><input class="in code" data-path="order.po" value="4503518106/165"></label>
-        <label class="f"><span class="lab">Invoice <span class="mono">no.</span></span><input class="in code" data-path="order.inv" value="2627JUN0008"></label>
-      </div>
-      <div class="grid4" style="margin-top:12px;">
+        <label class="f"><span class="lab">Invoice / Doc <span class="mono">no.</span></span><input class="in code" data-path="order.inv" value="2627JUN0008"></label>
+        <label class="f"><span class="lab">Reference</span><input class="in code" data-path="order.reference" value="" placeholder="e.g. B109-000339-00"></label>
         <label class="f"><span class="lab">Invoice date</span><input class="in code" data-path="order.date" value="15-June-2026"></label>
-        <label class="f"><span class="lab">USD → INR rate <button class="xrate-sync" id="syncInrBtn">↻ Sync INR rates</button></span><input class="in code" data-path="order.usdToInr" value="85.00"></label>
+      </div>
+
+      <div class="inv-section-head" style="margin-top:14px;">Buyer</div>
+      <div class="grid4">
+        <label class="f"><span class="lab">Buyer name</span><input class="in" data-path="order.buyer" value="Arxada AG"></label>
+        <label class="f"><span class="lab">To the order of <span class="mono">(opt.)</span></span><input class="in" data-path="order.buyerToOrder" value="" placeholder="—"></label>
+        <label class="f"><span class="lab">ATTN</span><input class="in" data-path="order.buyerAttn" value="" placeholder="contact person"></label>
+        <label class="f"><span class="lab">Contact <span class="mono">(tel/fax)</span></span><input class="in" data-path="order.buyerContact" value=""></label>
+      </div>
+      <div class="grid4" style="margin-top:10px;">
+        <label class="f" style="grid-column:span 3;"><span class="lab">Buyer full address</span><textarea class="in" data-path="order.buyerAddress" rows="2">Lonzastrasse 2, Visp-3930, Visp, Switzerland</textarea></label>
+        <label class="f"><span class="lab">Country</span><input class="in" data-path="order.country" value="Switzerland"></label>
+      </div>
+
+      <div class="inv-section-head" style="margin-top:14px;display:flex;align-items:center;gap:10px;">Consignee
+        <label style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;color:var(--ink);display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-family:var(--sans);">
+          <input type="checkbox" id="consigneeSame" checked style="margin:0;cursor:pointer;"> Same as buyer
+        </label>
+      </div>
+      <div id="consigneeFields" style="display:none;">
+        <div class="grid4">
+          <label class="f"><span class="lab">Consignee name</span><input class="in" data-path="order.consignee" value=""></label>
+          <label class="f"><span class="lab">To the order of <span class="mono">(opt.)</span></span><input class="in" data-path="order.consigneeToOrder" value=""></label>
+          <label class="f"><span class="lab">ATTN</span><input class="in" data-path="order.consigneeAttn" value=""></label>
+          <label class="f"><span class="lab">Contact <span class="mono">(tel/fax)</span></span><input class="in" data-path="order.consigneeContact" value=""></label>
+        </div>
+        <div class="grid4" style="margin-top:10px;">
+          <label class="f" style="grid-column:span 4;"><span class="lab">Consignee full address</span><textarea class="in" data-path="order.consigneeAddress" rows="2"></textarea></label>
+        </div>
+      </div>
+
+      <div class="inv-section-head" style="margin-top:14px;">Shipment &amp; commercial</div>
+      <div class="grid4">
+        <label class="f"><span class="lab">Port of origin</span><input class="in" data-path="order.portOfOrigin" value="Mumbai"></label>
+        <label class="f"><span class="lab">Port of discharge</span><input class="in" data-path="order.portOfDischarge" value="" placeholder="e.g. Tokyo, Japan"></label>
         <label class="f"><span class="lab">Sample type</span><select class="in" data-path="order.sampleType"><option value="gratis">Gratis</option><option value="paid">Paid</option></select></label>
         <label class="f"><span class="lab">Place of supply</span><input class="in" data-path="order.placeOfSupply" value="Mumbai, Maharashtra"></label>
       </div>
       <div class="grid4" style="margin-top:12px;">
+        <label class="f"><span class="lab">USD → INR rate <button class="xrate-sync" id="syncInrBtn">↻ Sync live rate</button> <span id="rateSpin" style="display:none;color:var(--orange);font-family:var(--mono);font-size:10px;">● loading…</span></span><input class="in code" data-path="order.usdToInr" value="85.00"></label>
+        <label class="f"><span class="lab">INR → USD rate</span><input class="in code" id="inrToUsd" value="" placeholder="auto"></label>
         <label class="f"><span class="lab">Transport mode</span><select class="in" data-path="order.shipTransport.mode"><option value="By Air">By Air</option><option value="By Sea">By Sea</option><option value="By Road">By Road</option><option value="By Courier">By Courier</option></select></label>
         <label class="f"><span class="lab">Carrier / Airline</span><input class="in" data-path="order.shipTransport.carrier" value=""></label>
+      </div>
+      <div class="grid4" style="margin-top:12px;">
         <label class="f"><span class="lab">AWB / LR no.</span><input class="in code" data-path="order.shipTransport.awb" value=""></label>
         <label class="f"><span class="lab">AWB date</span><input class="in code" data-path="order.shipTransport.awbDate" value=""></label>
-      </div>
-      <div class="grid4" style="margin-top:12px;">
         <label class="f"><span class="lab">Insurance company</span><input class="in" data-path="order.insurance.company" value=""></label>
         <label class="f"><span class="lab">Policy no.</span><input class="in code" data-path="order.insurance.policy" value=""></label>
-        <label class="f"><span class="lab">Insurance amount</span><input class="in code" data-path="order.insurance.amount" value=""></label>
-        <div></div>
       </div>
       <div class="grid4" style="margin-top:12px;">
-        <label class="f" style="grid-column:span 2;"><span class="lab">Buyer full address</span><textarea class="in" data-path="order.buyerAddress" rows="2">Lonzastrasse 2, Visp-3930, Visp, Switzerland</textarea></label>
-        <label class="f"><span class="lab">Buyer contact</span><input class="in" data-path="order.buyerContact" value=""></label>
+        <label class="f"><span class="lab">Insurance amount</span><input class="in code" data-path="order.insurance.amount" value=""></label>
         <label class="f"><span class="lab">Port of loading</span><input class="in" data-path="order.portOfLoading" value="Mumbai Airport, India"></label>
+        <div></div><div></div>
       </div>
       <div class="grid4" style="margin-top:12px;">
         <label class="f" style="grid-column:span 2;"><span class="lab">Payment terms</span><input class="in" data-path="order.paymentTerms" value="Net 60 days from date of invoice."></label>
@@ -574,6 +605,7 @@
       <p class="hint" id="innerSub" style="margin:6px 0 12px;">Your template + net weight, logo fixed.</p>
       <div class="stage" id="innerStage"></div>
       <p style="font-size:11px;color:var(--slate);margin:4px 0 0;text-align:center;">Click label to zoom · Print button prints all copies</p>
+      <label class="f" style="margin-top:8px;display:block;"><span class="lab" style="display:block;">✎ Name on this inner label <span class="mono">(overrides the product name — used only on the inner label)</span></span><input class="in" id="innerNameInput" placeholder="defaults to product / customer name"></label>
       <div class="pv-actions">
         <button class="btn print tiny" data-action="print" data-kind="labels">🖶 Print / Save inner labels (packed A4)</button>
         <span class="estimate" id="innerEst"></span>
@@ -584,6 +616,7 @@
       <p class="hint" style="margin:6px 0 12px;">Hazard / precautionary / storage / transport from the SDS. <b>Font auto-fits</b> the label.</p>
       <div class="stage" id="outerStage"></div>
       <p style="font-size:11px;color:var(--slate);margin:4px 0 0;text-align:center;">Click label to zoom · Print button prints all copies</p>
+      <label class="f" style="margin-top:8px;display:block;"><span class="lab" style="display:block;">✎ Name on this outer label <span class="mono">(overrides the product name — used only on the outer label)</span></span><input class="in" id="outerNameInput" placeholder="defaults to product / customer name"></label>
       <div class="pv-actions">
         <button class="btn print tiny" data-action="print" data-kind="outer">🖶 Print / Save outer labels (packed A4)</button>
         <span class="estimate" id="outerEst"></span>
@@ -605,6 +638,7 @@
         <button data-action="doc" data-doc="proforma" class="on">Proforma Invoice</button>
         <button data-action="doc" data-doc="invoice">Tax Invoice · GST</button>
         <button data-action="doc" data-doc="packing">Packing List</button>
+        <button data-action="doc" data-doc="address">Address Label</button>
       </span>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <span class="toggle" id="audToggle">
@@ -678,16 +712,23 @@ const CATALOG={
     hazards:[['H228','Flammable solid'],['H315','Causes skin irritation'],['H319','Causes serious eye irritation']],
     precautions:[['P210','Keep away from heat, sparks, open flame, hot surfaces — no smoking'],['P240','Ground and bond container and receiving equipment'],['P264','Wash hands and face thoroughly after handling'],['P280','Wear protective gloves and eye protection'],['P302+P352','IF ON SKIN: wash with plenty of water'],['P305+P351+P338','IF IN EYES: rinse cautiously with water for several minutes']],
     storage:'Keep container tightly closed and upright. Store in a dry, well-ventilated place at room temperature.',transport:'UN 1325 · Flammable solid, organic, n.o.s. · Class 4.1 · Packing Group II'},
+  'PAA':{customer:'2-Propoxyacetic acid',airline:'2-Propoxyacetic acid',cas:'54497-00-6',hs:'29189990',signal:'Warning',
+    hazards:[['H315','Causes skin irritation'],['H319','Causes serious eye irritation']],
+    precautions:[['P280','Wear protective gloves and eye protection'],['P305+P351+P338','IF IN EYES: rinse cautiously with water for several minutes']],
+    storage:'Store in a dry, well-ventilated place at room temperature. Keep container tightly closed.',transport:'Not a Dangerous Goods'},
 };
+const CUSTOM_CODE='__custom__';
 function customsName(code){const c=CATALOG[code];return c?CPRE+c.customer+CSUF:'';}
 function fill(item,code){const c=CATALOG[code];if(!c)return;item.code=code;item.customer=c.customer;item.airline=c.airline;item.customs=customsName(code);item.cas=c.cas;item.hs=c.hs;item.signal=c.signal;item.hazards=c.hazards.map(x=>x.slice());item.precautions=c.precautions.map(x=>x.slice());item.storage=c.storage;item.transport=c.transport;}
 function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1'};}
-function blankItem(){return {code:'',customer:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',unit:'Kg',rate:'16.67',rateInr:'47450',batches:[fb()]};}
+function blankItem(){return {code:'',customer:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',batches:[fb()]};}
 function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rateInr=rateInr;it.batches=batches;fill(it,code);return it;}
 let state={
   order:{buyer:'Arxada AG',country:'Switzerland',po:'4503518106/165',inv:'2627JUN0008',date:'15-June-2026',
-    usdToInr:'85.00',placeOfSupply:'Mumbai, Maharashtra',sampleType:'gratis',
-    buyerAddress:'Lonzastrasse 2, Visp-3930, Visp, Switzerland',buyerContact:'',
+    reference:'',usdToInr:'85.00',placeOfSupply:'Mumbai, Maharashtra',sampleType:'gratis',
+    buyerToOrder:'',buyerAddress:'Lonzastrasse 2, Visp-3930, Visp, Switzerland',buyerAttn:'',buyerContact:'',
+    consigneeSame:true,consignee:'',consigneeToOrder:'',consigneeAddress:'',consigneeAttn:'',consigneeContact:'',
+    portOfOrigin:'Mumbai',portOfDischarge:'',
     portOfLoading:'Mumbai Airport, India',paymentTerms:'Net 60 days from date of invoice.',
     prepTime:'04:00 PM',removalDate:'',removalTime:'10:00 PM',
     shipTransport:{mode:'By Air',carrier:'',awb:'',awbDate:''},
@@ -698,6 +739,14 @@ let state={
 let preview={i:0,b:0}, aud='customer', docType='proforma';
 function setPath(p,v){const a=p.split('.');let o=state;for(let k=0;k<a.length-1;k++)o=o[isNaN(a[k])?a[k]:+a[k]];const l=a[a.length-1];o[isNaN(l)?l:+l]=v;}
 function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+/* buyer / consignee resolution (consignee falls back to buyer when "same as buyer") */
+function buyerInfo(){const o=state.order;return {name:o.buyer,toOrder:o.buyerToOrder,address:o.buyerAddress||o.country,attn:o.buyerAttn,contact:o.buyerContact,country:o.country};}
+function consigneeInfo(){const o=state.order;
+  if(o.consigneeSame!==false) return buyerInfo();
+  return {name:o.consignee||o.buyer,toOrder:o.consigneeToOrder,address:o.consigneeAddress||o.buyerAddress||o.country,attn:o.consigneeAttn,contact:o.consigneeContact,country:o.country};}
+/* label name resolution: per-label override wins, else customer name */
+function innerNameOf(it){return (it.innerName&&it.innerName.trim())||it.customer;}
+function outerNameOf(it){return (it.outerName&&it.outerName.trim())||it.customer;}
 const US=x=>(x*SCALE/10)+'px';
 const UP=x=>x+'mm';
 function logoImg(h,u){return `<img class="lab-logo" src="${LOGO}" style="height:${u(h)};width:${u(h*LOGO_AR)};">`;}
@@ -711,7 +760,7 @@ function innerBody(it,b,tier,u){
     return `<div class="lab-pad" style="padding:${p};display:flex;flex-direction:column;gap:${u(.35)};">
       <div class="lab-hd"><div class="lab-co" style="font-size:${f1};max-width:55%;line-height:1.15;">Inventys Research Company Pvt Ltd</div>${logoImg(2.9,u)}</div>
       <div class="lab-div"></div>
-      <div class="lab-name" style="font-size:${f3};margin-top:${u(.15)};line-height:1.1;">${esc(it.customer)||'&nbsp;'}</div>
+      <div class="lab-name" style="font-size:${f3};margin-top:${u(.15)};line-height:1.1;">${esc(innerNameOf(it))||'&nbsp;'}</div>
       <div class="lab-row" style="font-size:${f1};flex-wrap:wrap;gap:${u(.5)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
       <div class="lab-row" style="font-size:${f1};gap:${u(.8)};"><span class="lab-k">LOT</span><span class="lab-v">${esc(b.batch)}</span><span class="lab-k">WT</span><span class="lab-v">${esc(b.qty)}&thinsp;${esc(it.unit)}</span></div>
       <div class="lab-row" style="font-size:${f1};"><span class="lab-k">ORIGIN</span><span class="lab-origin" style="font-size:${f1};">MADE IN INDIA</span></div>
@@ -719,15 +768,21 @@ function innerBody(it,b,tier,u){
   }
   const padmm=lg?2:1.3, gap=lg?.8:.6;
   const fName=lg?4.2:2.9, fRow=lg?2.9:2.1, fCo=lg?2.6:2.0, logoH=lg?7:4.2;
-  return `<div class="lab-pad" style="padding:${u(padmm)};gap:${u(gap)};">
-    <div class="lab-hd"><div class="lab-co" style="font-size:${u(fCo)};max-width:62%;">Inventys Research Company Pvt Ltd</div>${logoImg(logoH,u)}</div>
-    <div class="lab-div" style="margin-top:${u(.3)};"></div>
-    <div class="lab-name" style="font-size:${u(fName)};margin-top:${u(.35)};">${esc(it.customer)||'&nbsp;'}</div>
-    <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k" style="margin-left:auto;">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
-    <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">LOT NO</span><span class="lab-v">${esc(b.batch)}</span></div>
-    <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">NET WEIGHT</span><span class="lab-v">${esc(b.qty)} ${esc(it.unit)}</span></div>
-    <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">ORIGIN</span><span class="lab-origin">MADE IN INDIA</span></div>
-    ${lg?`<div style="flex:1;"></div><div class="barcode" style="height:${u(6)};"></div>`:''}
+  /* content is split into header / info / footer groups and spread with
+     space-between so it fills the label height uniformly (no empty bottom) */
+  return `<div class="lab-pad" style="padding:${u(padmm)};justify-content:space-between;">
+    <div style="display:flex;flex-direction:column;gap:${u(gap*0.7)};">
+      <div class="lab-hd"><div class="lab-co" style="font-size:${u(fCo)};max-width:62%;">Inventys Research Company Pvt Ltd</div>${logoImg(logoH,u)}</div>
+      <div class="lab-div"></div>
+      <div class="lab-name" style="font-size:${u(fName)};">${esc(innerNameOf(it))||'&nbsp;'}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:${u(gap*1.1)};">
+      <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k" style="margin-left:auto;">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
+      <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">LOT NO</span><span class="lab-v">${esc(b.batch)}</span></div>
+      <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">NET WEIGHT</span><span class="lab-v">${esc(b.qty)} ${esc(it.unit)}</span></div>
+      <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">ORIGIN</span><span class="lab-origin">MADE IN INDIA</span></div>
+    </div>
+    <div class="barcode" style="height:${u(lg?6:3.4)};margin-top:${u(gap)};"></div>
   </div>`;
 }
 /* ---- outer label (base sizes; scaled by auto-fit) ---- */
@@ -737,7 +792,7 @@ function outerBody(it,b,po,u){
   return `<div class="lab-pad flow" style="padding:${u(3.5)};display:flex;flex-direction:column;gap:${u(1.0)};">
     <div class="lab-hd">${logoImg(6.5,u)}<div style="text-align:right;"><div class="lab-co" style="font-size:${u(2.5)};">Inventys Research Company Pvt Ltd</div><div style="font-size:${u(2.0)};color:#666;font-family:var(--label-sans);">MADE IN INDIA</div></div></div>
     <div class="lab-div"></div>
-    <div class="lab-name" style="font-size:${u(3.9)};margin-top:${u(.2)};">${esc(it.customer)||'&nbsp;'}</div>
+    <div class="lab-name" style="font-size:${u(3.9)};margin-top:${u(.2)};">${esc(outerNameOf(it))||'&nbsp;'}</div>
     <div style="display:flex;flex-wrap:wrap;gap:${u(1.2)} ${u(4.5)};">
       <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)||'—'}</span></div>
       <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">PO</span><span class="lab-v">${esc(po)||'—'}</span></div>
@@ -804,7 +859,7 @@ function renderForm(){
       <div class="item-body">
         <div class="grid-codename">
           <label class="f"><span class="lab">Product code</span>
-            <select class="in codepick" data-role="code" data-i="${i}">${codes.map(c=>`<option value="${c}" ${c===it.code?'selected':''}>${c}</option>`).join('')}</select></label>
+            <select class="in codepick" data-role="code" data-i="${i}"><option value="${CUSTOM_CODE}" ${!it.code?'selected':''}>✎ Custom (type manually)</option>${codes.map(c=>`<option value="${c}" ${c===it.code?'selected':''}>${c}</option>`).join('')}</select></label>
           <label class="f"><span class="lab">Customer name <span class="mono">(client)</span></span><input class="in" data-path="items.${i}.customer" value="${esc(it.customer)}"></label>
         </div>
         <div class="grid4" style="margin-top:12px;">
@@ -823,7 +878,7 @@ function renderForm(){
           <label class="f"><span class="lab">Storage conditions</span><textarea class="in" data-path="items.${i}.storage">${esc(it.storage)}</textarea></label>
           <label class="f"><span class="lab">Transport</span><textarea class="in" data-path="items.${i}.transport">${esc(it.transport)}</textarea></label>
         </div>
-        <div class="sub-h"><span class="t">Batches</span><span class="cnt">${it.batches.length} · unit ${esc(it.unit)}</span></div>
+        <div class="sub-h"><span class="t">Batches</span><span class="cnt">${it.batches.length} batch(es)</span><span class="grow" style="flex:1;"></span><label style="font-size:11px;color:var(--slate);display:inline-flex;align-items:center;gap:5px;">Unit <select class="in" style="width:auto;padding:3px 6px;" data-path="items.${i}.unit"><option value="Kg" ${it.unit==='Kg'?'selected':''}>Kg</option><option value="g" ${it.unit==='g'?'selected':''}>g</option><option value="mg" ${it.unit==='mg'?'selected':''}>mg</option></select></label></div>
         ${it.batches.map((b,bi)=>`
           <div class="batch ${preview.i===i&&preview.b===bi?'previewing':''}">
             <div class="batch-top">
@@ -845,7 +900,14 @@ function renderForm(){
 }
 
 const innerStage=document.getElementById('innerStage');
+function syncLabelNameInputs(){
+  const it=state.items[preview.i];
+  const ii=document.getElementById('innerNameInput'), oi=document.getElementById('outerNameInput');
+  if(ii&&document.activeElement!==ii) ii.value=(it&&it.innerName)||'';
+  if(oi&&document.activeElement!==oi) oi.value=(it&&it.outerName)||'';
+}
 function renderInner(){
+  syncLabelNameInputs();
   const it=state.items[preview.i], b=it&&it.batches[preview.b];
   if(!b){innerStage.innerHTML='';document.getElementById('innerDim').textContent='—';return;}
   const bo=bottle(b.bottleId);
@@ -931,6 +993,11 @@ function lineMetrics(it){
 }
 function renderInvoice(){
   const area=document.getElementById('invArea'), note=document.getElementById('invNote');
+  if(docType==='address'){
+    area.innerHTML=addressPrint();
+    note.innerHTML='<b>ADDRESS LABEL</b> — courier From/To label. The "To" address comes from the Consignee (or Buyer when "same as buyer" is on).';
+    return;
+  }
   if(docType==='packing'){
     let rows='',totPkgs=0,totNet=0;
     state.items.forEach((it,i)=>{const m=lineMetrics(it);totPkgs+=m.pkgs;totNet+=m.totNet;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
@@ -1054,13 +1121,16 @@ function docHeader(title,sub,noLabel){return `
       </td>
     </tr>
   </table>`;}
+function partyCell(label,p){
+  return `<td style="width:37%;padding:5px 7px;border-right:1px solid #666;vertical-align:top;"><b>${label}</b><br>${p.toOrder?'To The Order Of<br>':''}<b>${esc(p.name)}</b><br>${esc(p.address)}<br>${p.attn?'ATTN: '+esc(p.attn)+'<br>':''}${p.contact?'Contact: '+esc(p.contact):''}</td>`;
+}
 function docParties(){
-  const o=state.order, addr=o.buyerAddress||o.country, port='Mumbai / Nagpur, India';
+  const o=state.order, B=buyerInfo(), C=consigneeInfo();
   return `<table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;">
     <tr>
-      <td style="width:37%;padding:5px 7px;border-right:1px solid #666;vertical-align:top;"><b>BUYER</b><br><b>${esc(o.buyer)}</b><br>${esc(addr)}<br>${o.buyerContact?'ATTN / Contact: '+esc(o.buyerContact):''}</td>
-      <td style="width:37%;padding:5px 7px;border-right:1px solid #666;vertical-align:top;"><b>CONSIGNEE</b><br><b>${esc(o.buyer)}</b><br>${esc(addr)}<br>${o.buyerContact?'ATTN / Contact: '+esc(o.buyerContact):''}</td>
-      <td style="width:26%;padding:5px 7px;vertical-align:top;"><b>Port of Origin:</b> ${esc(port)}<br><b>Port of Discharge:</b> ${esc(o.portOfLoading||o.country)}<br><b>Delivery Mode:</b> ${esc((o.shipTransport||{}).mode||'By Air')}</td>
+      ${partyCell('BUYER',B)}
+      ${partyCell('CONSIGNEE',C)}
+      <td style="width:26%;padding:5px 7px;vertical-align:top;"><b>Port of Origin:</b> ${esc(o.portOfOrigin||'Mumbai')}<br><b>Port of Discharge:</b> ${esc(o.portOfDischarge||o.portOfLoading||o.country)}<br><b>Delivery Mode:</b> ${esc((o.shipTransport||{}).mode||'By Air')}</td>
     </tr>
   </table>`;}
 function docMeta(){
@@ -1148,6 +1218,33 @@ function packingPrint(){
     </tr></table>
   </div>`;
 }
+function addressPrint(){
+  const C=consigneeInfo();
+  const logo=`<img src="${LOGO}" style="height:16mm;width:${16*LOGO_AR}mm;object-fit:contain;">`;
+  return `<div class="pinv" style="font-size:12pt;">
+    <div style="height:6px;background:linear-gradient(90deg,#464a90,#3a5a96 22%,#5ea637 55%,#f0a02e 80%,#ef6a22);margin-bottom:14px;"></div>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <td style="width:50%;vertical-align:top;padding:14px 16px;border:1.5px solid #333;">
+          <div style="font-size:10pt;font-weight:700;letter-spacing:.08em;color:#555;margin-bottom:8px;">FROM</div>
+          <div style="font-weight:700;font-size:12pt;">Dr. Deepak Birewar</div>
+          <div style="font-weight:700;">Inventys Research Company Pvt. Ltd</div>
+          <div style="margin-top:6px;line-height:1.5;">901C Tower 2, One International Centre,<br>Senapati Bapat Marg, Prabhadevi,<br>Mumbai 400013. INDIA</div>
+          <div style="margin-top:6px;">+91 9320013358 / +91 22 7140 0200</div>
+          <div>dbirewar@inventys.in</div>
+          <div style="margin-top:12px;">${logo}</div>
+        </td>
+        <td style="width:50%;vertical-align:top;padding:14px 16px;border:1.5px solid #333;border-left:none;">
+          <div style="font-size:10pt;font-weight:700;letter-spacing:.08em;color:#555;margin-bottom:8px;">TO</div>
+          <div style="font-weight:700;font-size:13pt;text-decoration:underline;">${esc(C.name)}</div>
+          <div style="margin-top:8px;line-height:1.6;white-space:pre-line;">${esc(C.address)}</div>
+          ${C.contact?`<div style="margin-top:10px;">Tel No.: ${esc(C.contact)}</div>`:''}
+          ${C.attn?`<div>ATTN: ${esc(C.attn)}</div>`:''}
+        </td>
+      </tr>
+    </table>
+  </div>`;
+}
 function gstPrint(){
   const cg=parseFloat(state.tax.cgst)||0,sg=parseFloat(state.tax.sgst)||0,ig=parseFloat(state.tax.igst)||0;
   let assess=0;
@@ -1161,7 +1258,7 @@ function gstPrint(){
       <td class="r" style="width:4%;">${i+1}</td>
       <td style="width:22%;">
         <b>${esc(it.customs||it.customer)}</b><br>
-        <span style="font-size:7.5pt;color:#333;">Consignee: ${esc(state.order.buyer)}, ${esc(state.order.country)}</span><br>
+        <span style="font-size:7.5pt;color:#333;">Consignee: ${esc(consigneeInfo().name)}, ${esc(consigneeInfo().address)}</span><br>
         <span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}</span>
       </td>
       <td style="width:9%;">${esc(it.hs)}</td>
@@ -1235,11 +1332,9 @@ function gstPrint(){
         <div style="margin-top:5px;"><b>Date &amp; Time of Removal:</b><br>${esc(state.order.removalDate||state.order.date)} ${esc(state.order.removalTime||'10:00 PM')}</div>
       </td>
       <td style="width:30%;padding:5px 7px;vertical-align:top;font-size:7.5pt;">
-        <b>Buyer:</b><br>
-        <b>${esc(state.order.buyer)}</b><br>
-        ${esc(state.order.buyerAddress||state.order.country)}<br>
-        ${state.order.buyerContact?`Contact: ${esc(state.order.buyerContact)}<br>`:''}
-        ${state.order.portOfLoading?`<b>Port of Loading:</b> ${esc(state.order.portOfLoading)}`:'Port of Loading: Mumbai Airport, India'}
+        <b>Buyer:</b> <b>${esc(buyerInfo().name)}</b><br>${esc(buyerInfo().address)}<br>${buyerInfo().attn?'ATTN: '+esc(buyerInfo().attn)+'<br>':''}
+        <b>Consignee:</b> <b>${esc(consigneeInfo().name)}</b><br>${esc(consigneeInfo().address)}<br>
+        <b>Port of Loading:</b> ${esc(state.order.portOfLoading||'Mumbai Airport, India')}
       </td>
     </tr>
   </table>
@@ -1317,11 +1412,14 @@ function gstPrint(){
   </table>
 </div>`;
 }
+function currentDocHTML(){
+  return docType==='invoice'?gstPrint():docType==='packing'?packingPrint():docType==='address'?addressPrint():proformaPrint();
+}
 function printDoc(kind){
   let html='';
   if(kind==='labels')html=innerSheetHTML();
   else if(kind==='outer')html=outerSheetHTML();
-  else if(kind==='invoice')html=docType==='invoice'?gstPrint():docType==='packing'?packingPrint():proformaPrint();
+  else if(kind==='invoice')html=currentDocHTML();
   document.getElementById('printRoot').innerHTML=html;
   document.body.classList.add('printing');
   setTimeout(()=>window.print(),60);
@@ -1374,17 +1472,61 @@ function extractStatements(text){
   const dedupe=a=>{const seen={},out=[];a.forEach(s=>{if(!seen[s.code]){seen[s.code]=1;out.push([s.code,s.desc]);}});return out;};
   return {hz:dedupe(hz), pr:dedupe(pr)};
 }
-function loadTextIntoPreviewed(text,srcName){
-  const it=state.items[preview.i]; if(!it){return;}
+/* global toast/notification (reuses the login toast element) */
+function notify(msg){
+  const el=document.getElementById('loginToast'), m=document.getElementById('loginToastMsg');
+  if(!el||!m){alert(msg);return;}
+  m.textContent=msg; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),4200);
+}
+/* pull product facts out of an SDS/CoA text blob */
+function extractProduct(text){
+  const out={cas:'',hs:'',name:'',signal:'',batches:[]};
+  let m;
+  if(m=text.match(/CAS(?:\s*(?:No\.?|Number|#))?\s*[:\-]?\s*(\d{2,7}-\d{2}-\d)/i)) out.cas=m[1];
+  if(m=text.match(/\bHS\s*(?:Code|No\.?)?\s*[:\-]?\s*(\d{6,8})/i)) out.hs=m[1];
+  // product name: look for common SDS labels
+  if(m=text.match(/(?:Product\s*(?:name|identifier)|Material\s*name|Trade\s*name|Chemical\s*name)\s*[:\-]?\s*([^\n]{3,80})/i)) out.name=m[1].trim().replace(/\s{2,}/g,' ');
+  if(/\bdanger\b/i.test(text)) out.signal='Danger'; else if(/\bwarning\b/i.test(text)) out.signal='Warning';
+  // batch numbers: tokens like PAA/FG/26-001, PAA.FG.26001, ABC-123/45, or explicit "Batch" lines
+  const bset={};
+  const re=/\b([A-Z]{2,6}[\/.\-][A-Z0-9]{1,6}[\/.\-]?\d{2}[.\-]?\d{2,4})\b/g;
+  while((m=re.exec(text))!==null){ bset[m[1]]=1; }
+  const re2=/(?:Batch|Lot)\s*(?:No\.?|#)?\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/.\-]{4,30})/gi;
+  while((m=re2.exec(text))!==null){ bset[m[1].replace(/[.,;]$/,'')]=1; }
+  out.batches=Object.keys(bset).slice(0,30);
+  return out;
+}
+/* apply extracted data into an item (mutates it) */
+function applyToItem(it,text,srcName){
   const {hz,pr}=extractStatements(text);
+  const p=extractProduct(text);
   if(hz.length)it.hazards=hz;
   if(pr.length)it.precautions=pr;
-  if(/\bdanger\b/i.test(text))it.signal='Danger';
-  else if(/\bwarning\b/i.test(text))it.signal='Warning';
+  if(p.cas)it.cas=p.cas;
+  if(p.hs)it.hs=p.hs;
+  if(p.signal)it.signal=p.signal;
+  if(p.name && !it.customer){it.customer=p.name; it.airline=p.name;}
+  // add discovered batches (skip duplicates), keeping any existing filled batch
+  if(p.batches.length){
+    const have=new Set(it.batches.map(b=>b.batch).filter(Boolean));
+    const fresh=p.batches.filter(x=>!have.has(x));
+    if(fresh.length){
+      // if the only batch is empty, replace it; else append
+      if(it.batches.length===1 && !it.batches[0].batch){ const base=it.batches[0]; it.batches=fresh.map(bn=>({...base,batch:bn})); }
+      else fresh.forEach(bn=>it.batches.push({batch:bn,qty:'',bottleId:it.batches[0].bottleId||'b100',copies:'1'}));
+    }
+  }
+  return {hz:hz.length,pr:pr.length,batches:p.batches.length,name:p.name,cas:p.cas};
+}
+function loadTextIntoPreviewed(text,srcName,targetIdx){
+  const idx=(targetIdx==null)?preview.i:targetIdx;
+  const it=state.items[idx]; if(!it){return null;}
+  const r=applyToItem(it,text,srcName);
   renderAll();
-  const sig=it.signal||'not detected';
   const st=document.getElementById('docStatus');
-  if(st)st.textContent=`Found ${hz.length} hazard + ${pr.length} precautionary statements [signal: ${sig}]${srcName?' from '+srcName:''} → Item ${preview.i+1}. Check and update as needed.`;
+  if(st)st.textContent=`${srcName||'text'} → Item ${idx+1}: ${r.hz} hazard + ${r.pr} precautionary, ${r.batches} batch no(s). Check & edit as needed.`;
+  return r;
 }
 async function readPdfText(file){
   if(typeof pdfjsLib==='undefined') throw new Error('pdf reader unavailable');
@@ -1404,22 +1546,47 @@ async function readPdfText(file){
   }
   return out;
 }
-document.getElementById('docFile').addEventListener('change',function(e){
-  const f=e.target.files[0]; if(!f)return;
-  const st=document.getElementById('docStatus'); st.textContent='Reading '+f.name+'…';
+/* read one file to plain text (txt/docx/pdf); returns '' for images/unsupported */
+async function fileToText(f){
   const name=f.name.toLowerCase();
-  if(name.endsWith('.txt')){const r=new FileReader();r.onload=()=>loadTextIntoPreviewed(r.result,f.name);r.readAsText(f);}
-  else if(name.endsWith('.docx')){
-    if(typeof mammoth==='undefined'){st.textContent='Could not load the .docx reader (offline?). Paste the text instead.';return;}
-    const r=new FileReader();r.onload=()=>{mammoth.extractRawText({arrayBuffer:r.result}).then(res=>loadTextIntoPreviewed(res.value,f.name)).catch(()=>{st.textContent='Could not read that .docx. Paste the text instead.';});};r.readAsArrayBuffer(f);
+  if(name.endsWith('.txt')) return await f.text();
+  if(name.endsWith('.docx')){
+    if(typeof mammoth==='undefined') throw new Error('docx reader unavailable');
+    const buf=await f.arrayBuffer();
+    const res=await mammoth.extractRawText({arrayBuffer:buf});
+    return res.value;
   }
-  else if(name.endsWith('.pdf')){
-    readPdfText(f).then(txt=>loadTextIntoPreviewed(txt,f.name)).catch(()=>{st.textContent='Could not read that PDF (it may be a scanned image). Paste the text instead.';});
+  if(name.endsWith('.pdf')) return await readPdfText(f);
+  return ''; // image or unsupported
+}
+document.getElementById('docFile').addEventListener('change',async function(e){
+  const files=[...e.target.files]; if(!files.length)return;
+  const st=document.getElementById('docStatus');
+  st.textContent=`Reading ${files.length} file(s)…`;
+  let firstUsedForCurrent=false, itemsTouched=0, totalBatches=0, skipped=[];
+  // decide starting item: if the current previewed item is essentially empty, fill it first
+  const cur=state.items[preview.i];
+  const curEmpty=cur && !cur.customer && !cur.cas && cur.batches.length===1 && !cur.batches[0].batch;
+  for(const f of files){
+    let text='';
+    try{ text=await fileToText(f); }
+    catch(err){ skipped.push(f.name+' (reader error)'); continue; }
+    if(!text || !text.trim()){ skipped.push(f.name+(f.type.startsWith('image/')?' (image — can’t auto-read)':' (no text)')); continue; }
+    let targetIdx;
+    if(!firstUsedForCurrent && curEmpty){ targetIdx=preview.i; firstUsedForCurrent=true; }
+    else { state.items.push(blankItem()); targetIdx=state.items.length-1; }
+    const r=applyToItem(state.items[targetIdx],text,f.name);
+    // name the item from the file if nothing detected
+    if(!state.items[targetIdx].customer){ const base=f.name.replace(/\.[^.]+$/,''); state.items[targetIdx].customer=base; state.items[targetIdx].airline=base; }
+    itemsTouched++; totalBatches+=r.batches;
   }
-  else if(f.type.startsWith('image/')){
-    st.textContent='Image attached ('+f.name+'). Statements can’t be auto-read from a picture — please type or paste them, or attach the image to the dispatch record for filing.';
-  }
-  else st.textContent='Unsupported file. Use PDF, Word (.docx), text, or an image — or paste the text.';
+  renderAll();
+  const parts=[`${itemsTouched} item(s) updated`, `${totalBatches} batch no(s) read`];
+  if(skipped.length) parts.push(`skipped: ${skipped.join(', ')}`);
+  const summary='Documents loaded — '+parts.join(' · ');
+  if(st) st.textContent=summary+'. Please review & edit before printing.';
+  notify(`✓ ${itemsTouched} item(s) updated from ${files.length} file(s)${totalBatches?` · ${totalBatches} batches`:''}`);
+  e.target.value='';
 });
 
 function renderAll(){renderForm();renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
@@ -1431,7 +1598,7 @@ document.body.addEventListener('input',e=>{const el=e.target;
   }
 });
 document.body.addEventListener('change',e=>{const el=e.target;
-  if(el.dataset.role==='code'){fill(state.items[+el.dataset.i],el.value);renderAll();return;}
+  if(el.dataset.role==='code'){const it=state.items[+el.dataset.i]; if(el.value===CUSTOM_CODE){it.code='';} else {fill(it,el.value);} renderAll();return;}
   if(el.dataset.tax){renderInvoice();return;}  // re-render on blur for tax fields
   if(el.tagName==='SELECT'&&el.dataset.path){setPath(el.dataset.path,el.value);renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
   if(el.dataset.path&&el.closest('#invArea')){renderInvoice();} // re-render invoice on blur for inv-rate fields
@@ -1440,7 +1607,7 @@ document.body.addEventListener('click',e=>{
   const t=e.target.closest('[data-action]'); if(!t)return;
   const a=t.dataset.action,i=+t.dataset.i,b=+t.dataset.b,j=+t.dataset.j,kind=t.dataset.kind;
   if(a==='print'){printDoc(t.dataset.kind);return;}
-  if(a==='loadpaste'){loadTextIntoPreviewed(document.getElementById('pasteBox').value,'pasted text');return;}
+  if(a==='loadpaste'){const r=loadTextIntoPreviewed(document.getElementById('pasteBox').value,'pasted text');if(r)notify(`✓ Item ${preview.i+1} updated from pasted text · ${r.hz} hazard, ${r.pr} precautionary, ${r.batches} batch(es)`);return;}
   if(a==='doc'){docType=t.dataset.doc;document.querySelectorAll('#docToggle button').forEach(x=>x.classList.toggle('on',x.dataset.doc===docType));renderInvoice();return;}
   if(a==='aud'){aud=t.dataset.aud;document.querySelectorAll('#audToggle button').forEach(x=>x.classList.toggle('on',x.dataset.aud===aud));renderInvoice();return;}
   if(a==='add-item')state.items.push(blankItem());
@@ -1454,10 +1621,17 @@ document.body.addEventListener('click',e=>{
   // syncInrBtn handled via id click below
   renderAll();
 });
+/* keep the INR→USD read-only field in sync with the USD→INR rate */
+function refreshInrToUsd(){
+  const rate=parseFloat(state.order.usdToInr)||0;
+  const el=document.getElementById('inrToUsd');
+  if(el && document.activeElement!==el) el.value=rate?('1 INR = $'+(1/rate).toFixed(4)):'';
+}
 document.getElementById('syncInrBtn').addEventListener('click',async function(){
-  const st=document.getElementById('docStatus');
+  const st=document.getElementById('docStatus'), spin=document.getElementById('rateSpin');
   const btn=this, old=btn.textContent;
-  btn.textContent='↻ fetching…'; btn.disabled=true;
+  btn.textContent='↻ fetching…'; btn.disabled=true; if(spin)spin.style.display='inline';
+  notify('⏳ Fetching live USD↔INR rate…');
   let rate=parseFloat(state.order.usdToInr)||85, live=false;
   /* fetch the current live USD→INR rate (free, no API key). Falls back to the
      manual rate if the browser is offline or the services can't be reached. */
@@ -1476,12 +1650,47 @@ document.getElementById('syncInrBtn').addEventListener('click',async function(){
   const inrInput=document.querySelector('[data-path="order.usdToInr"]');
   if(inrInput) inrInput.value=rate.toFixed(2);
   state.items.forEach(it=>{it.rateInr=(parseFloat(it.rate||0)*rate).toFixed(2);});
-  renderAll();
-  btn.textContent=old; btn.disabled=false;
+  renderAll(); refreshInrToUsd();
+  btn.textContent=old; btn.disabled=false; if(spin)spin.style.display='none';
   if(st){ st.textContent = live
     ? `Live rate fetched: 1 USD = ₹${rate.toFixed(2)} — item INR rates updated.`
     : `Couldn't reach the live-rate service (offline?). Used manual rate 1 USD = ₹${rate.toFixed(2)}.`; }
+  notify(live?`✓ Live rate: 1 USD = ₹${rate.toFixed(2)}`:`⚠ Offline — using manual rate ₹${rate.toFixed(2)}`);
 });
+/* per-label name overrides — edit here and the label reloads live from this box */
+(function(){
+  const ii=document.getElementById('innerNameInput'), oi=document.getElementById('outerNameInput');
+  if(ii) ii.addEventListener('input',function(){const it=state.items[preview.i];if(!it)return;it.innerName=this.value;renderInner();});
+  if(oi) oi.addEventListener('input',function(){const it=state.items[preview.i];if(!it)return;it.outerName=this.value;renderOuter();});
+})();
+/* consignee "same as buyer" toggle */
+(function(){
+  const cb=document.getElementById('consigneeSame'); if(!cb)return;
+  cb.addEventListener('change',function(){
+    state.order.consigneeSame=this.checked;
+    const f=document.getElementById('consigneeFields'); if(f)f.style.display=this.checked?'none':'block';
+    renderInvoice();
+  });
+})();
+/* INR→USD field: let the user drive the rate from the INR side too */
+(function(){
+  const el=document.getElementById('inrToUsd'); if(!el)return;
+  el.addEventListener('change',function(){
+    // accept "0.0118", "1/85", or "85" (interpreted as USD→INR if >1)
+    let v=this.value.trim().replace(/[^0-9./]/g,'');
+    let usdPerInr;
+    if(v.includes('/')){ const [a,b]=v.split('/').map(Number); usdPerInr=a/b; }
+    else { const n=parseFloat(v); usdPerInr = n>1 ? 1/n : n; }
+    if(usdPerInr>0){
+      const usdToInr=1/usdPerInr;
+      state.order.usdToInr=usdToInr.toFixed(2);
+      const inrInput=document.querySelector('[data-path="order.usdToInr"]'); if(inrInput)inrInput.value=usdToInr.toFixed(2);
+      state.items.forEach(it=>{it.rateInr=(parseFloat(it.rate||0)*usdToInr).toFixed(2);});
+      renderAll(); refreshInrToUsd();
+      notify(`✓ Set from INR→USD · 1 USD = ₹${usdToInr.toFixed(2)}`);
+    }
+  });
+})();
 
 /* ---- Dispatch storage (Feature 6) ---- */
 const DS_KEY='rgt_dispatches_v1';
@@ -1669,7 +1878,7 @@ renderDispatches();
   /* invoice zoom: clicking #invArea opens a zoomed printable view */
   document.getElementById('invArea').addEventListener('click',function(e){
     if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return; // don't intercept edits
-    const html=docType==='invoice'?gstPrint():docType==='packing'?packingPrint():proformaPrint();
+    const html=currentDocHTML();
     open(`<div style="width:190mm;padding:5mm;box-sizing:border-box;">${html}</div>`,'invoice');
   });
   window._openPreviewModal=open;
