@@ -516,8 +516,10 @@
       <div class="grid2" style="align-items:start;">
         <div>
           <input type="file" id="docFile" accept=".docx,.txt,.pdf,image/*" multiple style="font-size:12px;">
-          <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">Select one or many files (PDF · Word · text · images). Each SDS/CoA becomes its own item; batch numbers are read in automatically. You'll get a confirmation once loaded.</div>
+          <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">Drop in a whole batch of files at once — SDS, CoAs, invoices. Each <b>SDS</b> becomes an item; each <b>CoA</b> adds its batch to the matching product (grouped by CAS → code → name). Nothing is lost; you get a per-file report below.</div>
+          <label style="font-size:11px;color:var(--ink);margin-top:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="clearOnUpload" checked style="margin:0;cursor:pointer;"> Start fresh — clear existing items on this upload</label>
           <div id="docStatus" style="font-size:11px;color:var(--slate);margin-top:6px;font-family:var(--mono);"></div>
+          <div id="uploadReport" style="margin-top:4px;max-height:220px;overflow:auto;"></div>
         </div>
         <div>
           <textarea class="in" id="pasteBox" placeholder="…or paste long precautionary text here, one statement per line"></textarea>
@@ -1559,33 +1561,139 @@ async function fileToText(f){
   if(name.endsWith('.pdf')) return await readPdfText(f);
   return ''; // image or unsupported
 }
+/* ---------- role-aware multi-document ingest ----------
+   SDS defines an ITEM (safety data). CoA defines a BATCH (one per batch).
+   Docs are grouped by product identity (CAS → code → name) so 10s of CoAs
+   across several products land as the right batches under the right items. */
+function normName(s){return (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
+function validCas(c){                                   // CAS check-digit test
+  const m=/^(\d{2,7})-(\d{2})-(\d)$/.exec(c||''); if(!m)return false;
+  const d=(m[1]+m[2]).split('').reverse(); let sum=0;
+  d.forEach((x,i)=>sum+=(i+1)*(+x)); return sum%10===+m[3];
+}
+function classifyDoc(text,fn){
+  const t=(text||'').toLowerCase(), n=(fn||'').toLowerCase();
+  if(/safety data sheet|material safety data|sicherheitsdatenblatt/.test(t)) return 'sds';
+  if(/certificate of analysis|certificate of conformance|\bc\s*\.?\s*o\s*\.?\s*a\b/.test(t)) return 'coa';
+  if(/proforma\s+invoice/.test(t)) return 'proforma';
+  if(/tax\s+invoice/.test(t)) return 'invoice';
+  if(/hazards?\s+identification|precautionary statement|ghs0\d/.test(t)) return 'sds';
+  if(/\b(specification|test\s*result|result)\b/.test(t) && /\b(batch|lot|b\.?\s*no)\b/.test(t)) return 'coa';
+  if(/\bsds\b|msds|safety\s*data/.test(n)) return 'sds';
+  if(/\bcoa\b|c_o_a|certificate|analysis/.test(n)) return 'coa';
+  if(/proforma/.test(n)) return 'proforma';
+  if(/tax[_ ]?inv/.test(n)) return 'invoice';
+  if(/address|courier/.test(n)) return 'label';
+  return 'unknown';
+}
+function extractIdentity(text,fn){
+  const id={cas:'',code:'',name:'',hs:'',signal:''}; let m;
+  const near=text.match(/CAS(?:\s*(?:No\.?|Number|#|Reg\.?))?\s*[:\-]?\s*(\d{2,7}-\d{2}-\d)/i);
+  if(near && validCas(near[1])) id.cas=near[1];
+  else { const all=[...text.matchAll(/\b(\d{2,7}-\d{2}-\d)\b/g)].map(x=>x[1]).filter(validCas); if(all.length)id.cas=all[0]; }
+  if(m=text.match(/\bHS\s*(?:Code|No\.?)?\s*[:\-]?\s*(\d{6,8})/i)) id.hs=m[1];
+  if(m=text.match(/(?:Product\s*(?:name|identifier)|Material\s*name|Trade\s*name|Chemical\s*name|Product)\s*[:\-]\s*([^\n]{3,90})/i))
+    id.name=m[1].trim().replace(/\s{2,}/g,' ').replace(/[;,]+$/,'');
+  const codes=Object.keys(CATALOG);
+  for(const c of codes){ const esc=c.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&');
+    if(new RegExp('(^|[^A-Za-z0-9])'+esc+'([^A-Za-z0-9]|$)').test(text) || new RegExp('(^|[^A-Za-z0-9])'+esc+'([^A-Za-z0-9]|$)','i').test(fn||'')){ id.code=c; break; } }
+  if(/\bdanger\b/i.test(text)) id.signal='Danger'; else if(/\bwarning\b/i.test(text)) id.signal='Warning';
+  if(!id.name && id.code && CATALOG[id.code]) id.name=CATALOG[id.code].customer;
+  if(!id.cas && id.code && CATALOG[id.code]) id.cas=CATALOG[id.code].cas;
+  return id;
+}
+function extractBatches(text,fn){
+  const out=[], seen={};
+  const add=bn=>{ bn=(bn||'').trim().replace(/[.,;]+$/,''); if(bn.length<4||seen[bn.toUpperCase()])return; seen[bn.toUpperCase()]=1; out.push(bn); };
+  let m;
+  const re=/(?:Batch|Lot|B\.?\s*No|Batch\s*No)\s*(?:No\.?|Number|#)?\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/.\-]{3,30})/gi;
+  while((m=re.exec(text))) add(m[1]);
+  const re2=/(^|[^A-Za-z0-9])([A-Z]{2,6}[\/.\-][A-Z0-9]{1,6}[\/.\-]?\d{2}[.\-]?\d{2,4})(?=[^A-Za-z0-9]|$)/g;
+  while((m=re2.exec(text))) add(m[2]);
+  const fnb=(fn||'').match(/([A-Z]{2,6}[.\/\-][A-Z0-9]{1,6}[.\/\-]\d{2,6})/i); if(fnb) add(fnb[1]);
+  return out.slice(0,60);
+}
+/* merge all parsed docs into items; returns a per-file report */
+function ingestDocs(parsed, clearFirst){
+  let items = clearFirst ? [] : state.items.slice();
+  const findItem=id=> items.find(it=>
+    (it.cas&&id.cas&&it.cas===id.cas) ||
+    (it.code&&id.code&&it.code===id.code) ||
+    (it.customer&&id.name&&normName(it.customer)===normName(id.name)) );
+  const ensureItem=id=>{
+    let it=findItem(id);
+    if(!it){ it=blankItem(); if(id.code&&CATALOG[id.code])fill(it,id.code); items.push(it); }
+    if(id.cas&&!it.cas)it.cas=id.cas;
+    if(id.code&&!it.code)it.code=id.code;
+    if(id.hs&&!it.hs)it.hs=id.hs;
+    if(id.name&&!it.customer){it.customer=id.name; if(!it.airline)it.airline=id.name;}
+    return it;
+  };
+  const rank={sds:0,coa:1,proforma:2,invoice:2,label:3,unknown:4};
+  parsed.sort((a,b)=>(rank[a.kind]??9)-(rank[b.kind]??9));
+  const report=[];
+  for(const d of parsed){
+    if(d.kind==='label'){ report.push({file:d.file,kind:'label',ok:true,msg:'address / courier label — no item data to load'}); continue; }
+    const nothing=!d.id.cas && !d.id.code && !d.id.name && !d.batches.length && !d.hz.length && !d.pr.length;
+    if(nothing){ report.push({file:d.file,kind:d.kind,ok:false,msg:'couldn’t read product/batch data — open it and paste text, or it may be a scan'}); continue; }
+    const it=ensureItem(d.id);
+    let added=0;
+    if(d.kind==='sds'){
+      if(d.hz.length)it.hazards=d.hz;
+      if(d.pr.length)it.precautions=d.pr;
+      if(d.id.signal)it.signal=d.id.signal;
+    } else {
+      if(!it.hazards.length&&d.hz.length)it.hazards=d.hz;
+      if(!it.precautions.length&&d.pr.length)it.precautions=d.pr;
+      if(!it.signal&&d.id.signal)it.signal=d.id.signal;
+    }
+    const have=new Set(it.batches.map(b=>b.batch).filter(Boolean));
+    for(const bn of d.batches){
+      if(have.has(bn))continue;
+      if(it.batches.length===1 && !it.batches[0].batch) it.batches[0].batch=bn;
+      else it.batches.push({batch:bn,qty:'',bottleId:it.batches[0].bottleId||'b100',copies:'1'});
+      have.add(bn); added++;
+    }
+    const idx=items.indexOf(it)+1;
+    const label=it.customer||it.code||it.cas||'item';
+    const tag=d.kind==='sds'?`SDS · ${d.hz.length}H/${d.pr.length}P`:d.kind==='coa'?'CoA':d.kind;
+    report.push({file:d.file,kind:d.kind,ok:true,msg:`${tag} → Item ${idx} (${label})${added?` · +${added} batch`:d.kind==='coa'?' · batch already present':''}`});
+  }
+  if(items.length) state.items=items;
+  return report;
+}
+function renderUploadReport(report){
+  const el=document.getElementById('uploadReport'); if(!el)return;
+  if(!report.length){el.innerHTML='';return;}
+  const ok=report.filter(r=>r.ok).length, bad=report.length-ok;
+  el.innerHTML=`<div style="font-weight:700;font-size:12px;margin:8px 0 4px;">Load report — ${ok} ok${bad?`, <span style="color:#c0392b;">${bad} need attention</span>`:''}</div>`+
+    report.map(r=>`<div style="font-size:11px;padding:3px 6px;border-left:3px solid ${r.ok?'#5ea637':'#e0a800'};background:${r.ok?'#f3f8ee':'#fff8e6'};margin-bottom:2px;border-radius:3px;">
+      <b>${esc(r.file)}</b> — ${esc(r.msg)}</div>`).join('');
+}
 document.getElementById('docFile').addEventListener('change',async function(e){
   const files=[...e.target.files]; if(!files.length)return;
   const st=document.getElementById('docStatus');
-  st.textContent=`Reading ${files.length} file(s)…`;
-  let firstUsedForCurrent=false, itemsTouched=0, totalBatches=0, skipped=[];
-  // decide starting item: if the current previewed item is essentially empty, fill it first
-  const cur=state.items[preview.i];
-  const curEmpty=cur && !cur.customer && !cur.cas && cur.batches.length===1 && !cur.batches[0].batch;
+  const parsed=[], skipped=[];
+  let n=0;
   for(const f of files){
+    n++; st.textContent=`Reading ${n}/${files.length} — ${f.name}…`;
     let text='';
     try{ text=await fileToText(f); }
-    catch(err){ skipped.push(f.name+' (reader error)'); continue; }
-    if(!text || !text.trim()){ skipped.push(f.name+(f.type.startsWith('image/')?' (image — can’t auto-read)':' (no text)')); continue; }
-    let targetIdx;
-    if(!firstUsedForCurrent && curEmpty){ targetIdx=preview.i; firstUsedForCurrent=true; }
-    else { state.items.push(blankItem()); targetIdx=state.items.length-1; }
-    const r=applyToItem(state.items[targetIdx],text,f.name);
-    // name the item from the file if nothing detected
-    if(!state.items[targetIdx].customer){ const base=f.name.replace(/\.[^.]+$/,''); state.items[targetIdx].customer=base; state.items[targetIdx].airline=base; }
-    itemsTouched++; totalBatches+=r.batches;
+    catch(err){ skipped.push({file:f.name,kind:'?',ok:false,msg:'reader error ('+(err.message||'failed')+')'}); continue; }
+    if(!text || !text.trim()){ skipped.push({file:f.name,kind:'?',ok:false,msg:f.type.startsWith('image/')?'image — can’t auto-read text (paste it instead)':'no readable text (likely a scan — paste it instead)'}); continue; }
+    const {hz,pr}=extractStatements(text);
+    parsed.push({file:f.name,kind:classifyDoc(text,f.name),id:extractIdentity(text,f.name),batches:extractBatches(text,f.name),hz,pr});
   }
-  renderAll();
-  const parts=[`${itemsTouched} item(s) updated`, `${totalBatches} batch no(s) read`];
-  if(skipped.length) parts.push(`skipped: ${skipped.join(', ')}`);
-  const summary='Documents loaded — '+parts.join(' · ');
-  if(st) st.textContent=summary+'. Please review & edit before printing.';
-  notify(`✓ ${itemsTouched} item(s) updated from ${files.length} file(s)${totalBatches?` · ${totalBatches} batches`:''}`);
+  const clearFirst=(document.getElementById('clearOnUpload')||{}).checked;
+  const report=ingestDocs(parsed,clearFirst).concat(skipped);
+  // keep preview indices valid
+  if(preview.i>=state.items.length)preview.i=Math.max(0,state.items.length-1);
+  preview.b=0;
+  renderAll(); renderUploadReport(report);
+  const items=state.items.length, batches=state.items.reduce((s,it)=>s+it.batches.filter(b=>b.batch).length,0);
+  const bad=report.filter(r=>!r.ok).length;
+  st.textContent=`Loaded ${files.length} file(s) → ${items} item(s), ${batches} batch(es).${bad?` ${bad} file(s) need attention (see report).`:''} Review before printing.`;
+  notify(`✓ ${files.length} file(s) → ${items} item(s), ${batches} batch(es)${bad?` · ${bad} need attention`:''}`);
   e.target.value='';
 });
 
