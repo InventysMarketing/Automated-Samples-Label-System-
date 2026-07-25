@@ -499,6 +499,12 @@
 <div class="topbar">
   <div class="brand"><span class="mark">Inventys Research</span><span class="sub">Dispatch &amp; Label Console</span></div>
   <div class="outs" style="display:none;" id="genInfo">generates&nbsp; <b>Inner label</b> · <b>Outer label</b> · <b>Invoice</b> · <b>Packing list</b></div>
+  <div id="docBar" style="display:none;align-items:center;gap:8px;margin-left:auto;">
+    <span style="font-size:11px;color:var(--muted);">Document</span>
+    <input id="docNameInput" placeholder="Untitled document" style="font-size:12px;padding:5px 8px;border:1px solid #ccc;border-radius:6px;min-width:160px;background:#fff;color:#222;">
+    <button class="btn tiny" id="saveDocBtn">💾 Save</button>
+    <button class="btn tiny" id="newDocBtn">✚ New</button>
+  </div>
   <div class="lg-topbar-user" id="topbarUser" style="display:none;">
     <div class="lg-topbar-avatar" id="topbarAvatar">?</div>
     <span class="lg-topbar-name" id="topbarName"></span>
@@ -516,10 +522,10 @@
       <div class="grid2" style="align-items:start;">
         <div>
           <input type="file" id="docFile" accept=".docx,.txt,.pdf,image/*" multiple style="font-size:12px;">
-          <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">Drop in a whole batch of files at once — SDS, CoAs, invoices. Each <b>SDS</b> becomes an item; each <b>CoA</b> adds its batch to the matching product (grouped by CAS → code → name). Nothing is lost; you get a per-file report below.</div>
-          <label style="font-size:11px;color:var(--ink);margin-top:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="clearOnUpload" checked style="margin:0;cursor:pointer;"> Start fresh — clear existing items on this upload</label>
+          <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">Add files any number of times — they <b>accumulate</b>. Each <b>SDS</b> = one item; each <b>CoA</b> = one batch, matched to its product (CAS → code → name). Remove any file with its ✕ below.</div>
+          <div id="filesList" style="margin-top:8px;"></div>
           <div id="docStatus" style="font-size:11px;color:var(--slate);margin-top:6px;font-family:var(--mono);"></div>
-          <div id="uploadReport" style="margin-top:4px;max-height:220px;overflow:auto;"></div>
+          <div id="uploadReport" style="margin-top:4px;max-height:200px;overflow:auto;"></div>
         </div>
         <div>
           <textarea class="in" id="pasteBox" placeholder="…or paste long precautionary text here, one statement per line"></textarea>
@@ -725,21 +731,44 @@ function fill(item,code){const c=CATALOG[code];if(!c)return;item.code=code;item.
 function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1'};}
 function blankItem(){return {code:'',customer:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',batches:[fb()]};}
 function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rateInr=rateInr;it.batches=batches;fill(it,code);return it;}
-let state={
-  order:{buyer:'Arxada AG',country:'Switzerland',po:'4503518106/165',inv:'2627JUN0008',date:'15-June-2026',
-    reference:'',usdToInr:'85.00',placeOfSupply:'Mumbai, Maharashtra',sampleType:'gratis',
-    buyerToOrder:'',buyerAddress:'Lonzastrasse 2, Visp-3930, Visp, Switzerland',buyerAttn:'',buyerContact:'',
+/* Everything starts blank; a saved document (localStorage) is restored on login.
+   A few Inventys-constant defaults are kept so calculations don't break. */
+function blankState(){return {
+  docName:'', _fid:0,
+  order:{buyer:'',country:'',po:'',inv:'',date:'',
+    reference:'',usdToInr:'85.00',placeOfSupply:'',sampleType:'gratis',
+    buyerToOrder:'',buyerAddress:'',buyerAttn:'',buyerContact:'',
     consigneeSame:true,consignee:'',consigneeToOrder:'',consigneeAddress:'',consigneeAttn:'',consigneeContact:'',
     portOfOrigin:'Mumbai',portOfDischarge:'',
-    portOfLoading:'Mumbai Airport, India',paymentTerms:'Net 60 days from date of invoice.',
+    portOfLoading:'Mumbai Airport, India',paymentTerms:'',
     prepTime:'04:00 PM',removalDate:'',removalTime:'10:00 PM',
     shipTransport:{mode:'By Air',carrier:'',awb:'',awbDate:''},
     insurance:{company:'',policy:'',amount:''}},
   tax:{cgst:'0',sgst:'0',igst:'18'},
-  items:[ mk('DETDA-Cl',[{batch:'DETDA-Cl/260609-020',qty:'0.100',bottleId:'b250',copies:'1'}],'16.67','47450') ],
-};
+  items:[], files:[],
+};}
+let state=blankState();
 let preview={i:0,b:0}, aud='customer', docType='proforma';
 function setPath(p,v){const a=p.split('.');let o=state;for(let k=0;k<a.length-1;k++)o=o[isNaN(a[k])?a[k]:+a[k]];const l=a[a.length-1];o[isNaN(l)?l:+l]=v;}
+function getPath(p){const a=p.split('.');let o=state;for(const k of a){if(o==null)return undefined;o=o[isNaN(k)?k:+k];}return o;}
+const WORK_KEY='inventys_working_doc_v1';
+function serializeDoc(){return JSON.stringify({docName:state.docName,order:state.order,tax:state.tax,items:state.items,files:state.files,_fid:state._fid,aud,docType});}
+function saveWorking(){try{localStorage.setItem(WORK_KEY,serializeDoc());}catch(e){}}
+let _saveT; function autosave(){clearTimeout(_saveT);_saveT=setTimeout(saveWorking,400);}
+function loadWorking(){try{const s=JSON.parse(localStorage.getItem(WORK_KEY)||'null');if(!s)return false;
+  state=blankState();
+  Object.assign(state,{docName:s.docName||'',order:Object.assign(state.order,s.order||{}),tax:s.tax||state.tax,items:s.items||[],files:s.files||[],_fid:s._fid||0});
+  if(s.aud)aud=s.aud; if(s.docType)docType=s.docType; return true;}catch(e){return false;}}
+/* push state values back into the static order-detail inputs (they're not re-rendered) */
+function hydrateInputs(){
+  document.querySelectorAll('[data-path]').forEach(el=>{
+    if(el.closest('#items')||el.closest('#invArea'))return;
+    const v=getPath(el.dataset.path); if(v===undefined||v===null)return;
+    if(el.type==='checkbox')el.checked=!!v; else el.value=v;
+  });
+  const cs=document.getElementById('consigneeSame'); if(cs){cs.checked=state.order.consigneeSame!==false; const f=document.getElementById('consigneeFields'); if(f)f.style.display=cs.checked?'none':'block';}
+  const dn=document.getElementById('docNameInput'); if(dn)dn.value=state.docName||'';
+}
 function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 /* buyer / consignee resolution (consignee falls back to buyer when "same as buyer") */
 function buyerInfo(){const o=state.order;return {name:o.buyer,toOrder:o.buyerToOrder,address:o.buyerAddress||o.country,attn:o.buyerAttn,contact:o.buyerContact,country:o.country};}
@@ -1602,120 +1631,154 @@ function extractIdentity(text,fn){
   if(!id.cas && id.code && CATALOG[id.code]) id.cas=CATALOG[id.code].cas;
   return id;
 }
-function extractBatches(text,fn){
-  const out=[], seen={};
-  const add=bn=>{ bn=(bn||'').trim().replace(/[.,;]+$/,''); if(bn.length<4||seen[bn.toUpperCase()])return; seen[bn.toUpperCase()]=1; out.push(bn); };
+/* exactly ONE batch number for a CoA (best candidate; '' if none found) */
+function extractOneBatch(text,fn){
   let m;
-  const re=/(?:Batch|Lot|B\.?\s*No|Batch\s*No)\s*(?:No\.?|Number|#)?\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/.\-]{3,30})/gi;
-  while((m=re.exec(text))) add(m[1]);
-  const re2=/(^|[^A-Za-z0-9])([A-Z]{2,6}[\/.\-][A-Z0-9]{1,6}[\/.\-]?\d{2}[.\-]?\d{2,4})(?=[^A-Za-z0-9]|$)/g;
-  while((m=re2.exec(text))) add(m[2]);
-  const fnb=(fn||'').match(/([A-Z]{2,6}[.\/\-][A-Z0-9]{1,6}[.\/\-]\d{2,6})/i); if(fnb) add(fnb[1]);
-  return out.slice(0,60);
+  if(m=text.match(/(?:Batch|Lot|B\.?\s*No|Batch\s*No)\s*(?:No\.?|Number|#)?\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/.\-]{3,30})/i)) return m[1].replace(/[.,;]+$/,'');
+  if(m=text.match(/(^|[^A-Za-z0-9])([A-Z]{2,6}[\/.\-][A-Z0-9]{1,6}[\/.\-]?\d{2}[.\-]?\d{2,4})(?=[^A-Za-z0-9]|$)/)) return m[2];
+  if(m=(fn||'').match(/([A-Z]{2,6}[.\/\-][A-Z0-9]{1,6}[.\/\-]\d{2,6})/i)) return m[1];
+  return '';
 }
-/* merge all parsed docs into items; returns a per-file report */
-function ingestDocs(parsed, clearFirst){
-  let items = clearFirst ? [] : state.items.slice();
-  const findItem=id=> items.find(it=>
-    (it.cas&&id.cas&&it.cas===id.cas) ||
-    (it.code&&id.code&&it.code===id.code) ||
-    (it.customer&&id.name&&normName(it.customer)===normName(id.name)) );
-  const ensureItem=id=>{
-    let it=findItem(id);
-    if(!it){ it=blankItem(); if(id.code&&CATALOG[id.code])fill(it,id.code); items.push(it); }
-    if(id.cas&&!it.cas)it.cas=id.cas;
-    if(id.code&&!it.code)it.code=id.code;
-    if(id.hs&&!it.hs)it.hs=id.hs;
-    if(id.name&&!it.customer){it.customer=id.name; if(!it.airline)it.airline=id.name;}
-    return it;
-  };
-  const rank={sds:0,coa:1,proforma:2,invoice:2,label:3,unknown:4};
-  parsed.sort((a,b)=>(rank[a.kind]??9)-(rank[b.kind]??9));
-  const report=[];
-  for(const d of parsed){
-    if(d.kind==='label'){ report.push({file:d.file,kind:'label',ok:true,msg:'address / courier label — no item data to load'}); continue; }
-    const nothing=!d.id.cas && !d.id.code && !d.id.name && !d.batches.length && !d.hz.length && !d.pr.length;
-    if(nothing){ report.push({file:d.file,kind:d.kind,ok:false,msg:'couldn’t read product/batch data — open it and paste text, or it may be a scan'}); continue; }
-    const it=ensureItem(d.id);
-    let added=0;
-    if(d.kind==='sds'){
-      if(d.hz.length)it.hazards=d.hz;
-      if(d.pr.length)it.precautions=d.pr;
-      if(d.id.signal)it.signal=d.id.signal;
-    } else {
-      if(!it.hazards.length&&d.hz.length)it.hazards=d.hz;
-      if(!it.precautions.length&&d.pr.length)it.precautions=d.pr;
-      if(!it.signal&&d.id.signal)it.signal=d.id.signal;
-    }
-    const have=new Set(it.batches.map(b=>b.batch).filter(Boolean));
-    for(const bn of d.batches){
-      if(have.has(bn))continue;
-      if(it.batches.length===1 && !it.batches[0].batch) it.batches[0].batch=bn;
-      else it.batches.push({batch:bn,qty:'',bottleId:it.batches[0].bottleId||'b100',copies:'1'});
-      have.add(bn); added++;
-    }
-    const idx=items.indexOf(it)+1;
-    const label=it.customer||it.code||it.cas||'item';
-    const tag=d.kind==='sds'?`SDS · ${d.hz.length}H/${d.pr.length}P`:d.kind==='coa'?'CoA':d.kind;
-    report.push({file:d.file,kind:d.kind,ok:true,msg:`${tag} → Item ${idx} (${label})${added?` · +${added} batch`:d.kind==='coa'?' · batch already present':''}`});
+/* find an item matching a parsed identity (CAS -> code -> name) */
+function matchItem(id){ return state.items.find(it=>
+  (it.cas&&id.cas&&it.cas===id.cas) ||
+  (it.code&&id.code&&it.code===id.code) ||
+  (it.customer&&id.name&&normName(it.customer)===normName(id.name)) ); }
+function ensureItem(id){
+  let it=matchItem(id);
+  if(!it){ it=blankItem(); it.fromFile=true; it.srcFiles=[]; if(id.code&&CATALOG[id.code])fill(it,id.code); state.items.push(it); }
+  if(!it.srcFiles)it.srcFiles=[];
+  if(id.cas&&!it.cas)it.cas=id.cas;
+  if(id.code&&!it.code)it.code=id.code;
+  if(id.hs&&!it.hs)it.hs=id.hs;
+  if(id.name&&!it.customer){it.customer=id.name; if(!it.airline)it.airline=id.name;}
+  return it;
+}
+/* merge one parsed file (f) into items. STRICT: 1 SDS = 1 item, 1 CoA = 1 batch */
+function ingestFile(f){
+  if(!f.ok) return {ok:false,msg:f.reason||'could not read this file (scan / image — paste it instead)'};
+  if(f.kind==='label')    return {ok:true,msg:'address / courier label — recorded, no item data'};
+  if(f.kind==='proforma'||f.kind==='invoice') return {ok:true,msg:f.kind+' — recorded (order document)'};
+  const empty=!f.ident.cas && !f.ident.code && !f.ident.name && !f.batch && !f.hz.length && !f.pr.length;
+  if(f.kind==='unknown' && empty) return {ok:false,msg:'couldn’t tell what this is or read any data — check it or paste the text'};
+  const it=ensureItem(f.ident);
+  if(!it.srcFiles.includes(f.id)) it.srcFiles.push(f.id);
+  if(f.kind==='sds'){
+    if(f.hz.length)it.hazards=f.hz;
+    if(f.pr.length)it.precautions=f.pr;
+    if(f.ident.signal)it.signal=f.ident.signal;
+    it.sdsFile=f.id;
+    const idx=state.items.indexOf(it)+1;
+    return {ok:true,msg:`SDS → Item ${idx} (${it.customer||it.code||it.cas||'item'}) · ${f.hz.length}H / ${f.pr.length}P`};
   }
-  if(items.length) state.items=items;
-  return report;
+  // CoA (or unknown-with-data): add exactly one batch
+  it.batches=it.batches.filter(b=>b.batch||b.srcFile);           // drop the pristine empty placeholder
+  it.batches.push({batch:f.batch||'',qty:'',bottleId:(it.batches[0]&&it.batches[0].bottleId)||'b100',copies:'1',srcFile:f.id});
+  if(!it.batches.length)it.batches=[fb()];
+  const idx=state.items.indexOf(it)+1;
+  return {ok:!!f.batch, msg:`CoA → Item ${idx} (${it.customer||it.code||it.cas||'item'}) · batch ${f.batch||'⚠ number not read — fill it in'}`};
+}
+function fixPreview(){ if(preview.i>=state.items.length)preview.i=Math.max(0,state.items.length-1); preview.b=0; }
+function removeFile(id){
+  state.files=state.files.filter(x=>x.id!==id);
+  state.items.forEach(it=>{
+    it.batches=(it.batches||[]).filter(b=>b.srcFile!==id);
+    it.srcFiles=(it.srcFiles||[]).filter(x=>x!==id);
+    if(it.sdsFile===id) delete it.sdsFile;
+  });
+  // drop file-derived items that no longer have any source file
+  state.items=state.items.filter(it=> !(it.fromFile && (it.srcFiles||[]).length===0));
+  state.items.forEach(it=>{ if(!it.batches||!it.batches.length)it.batches=[fb()]; });
+  fixPreview(); renderAll(); renderFiles(); autosave();
+  notify('Removed file · documents refreshed');
+}
+function removeAllFiles(){
+  if(!state.files.length)return;
+  if(!confirm('Remove all '+state.files.length+' uploaded file(s)? Your order details and any manually-added items are kept.'))return;
+  state.files=[];
+  state.items=state.items.filter(it=>!it.fromFile);
+  state.items.forEach(it=>{ it.batches=(it.batches||[]).filter(b=>!b.srcFile); if(!it.batches.length)it.batches=[fb()]; delete it.srcFiles; delete it.sdsFile; });
+  fixPreview(); renderAll(); renderFiles(); document.getElementById('uploadReport').innerHTML=''; autosave();
+  notify('All uploaded files removed');
+}
+const KIND_BADGE={sds:'#5ea637',coa:'#3a5a96',proforma:'#8a6d3b',invoice:'#8a6d3b',label:'#777',unknown:'#c0392b'};
+function renderFiles(){
+  const el=document.getElementById('filesList'); if(!el)return;
+  if(!state.files.length){el.innerHTML='<div style="font-size:11px;color:var(--muted);">No files uploaded yet.</div>';return;}
+  el.innerHTML=`<div style="display:flex;align-items:center;margin-bottom:5px;">
+      <span style="font-weight:700;font-size:12px;">Uploaded files (${state.files.length})</span>
+      <span style="flex:1;"></span>
+      <button class="btn x tiny" data-action="rm-all-files">✕ Remove all</button>
+    </div>`+
+    state.files.map(f=>`<div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 6px;border:1px solid #e5e5e5;border-radius:5px;margin-bottom:3px;background:#fafafa;">
+      <span style="background:${KIND_BADGE[f.kind]||'#777'};color:#fff;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;text-transform:uppercase;">${esc(f.kind)}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(f.name)}">${esc(f.name)}</span>
+      ${f.kind==='coa'?`<span class="mono" style="color:var(--slate);">${esc(f.batch||'no batch#')}</span>`:''}
+      <span class="xbtn" data-action="rm-file" data-id="${f.id}" style="cursor:pointer;color:#c0392b;font-weight:700;" title="remove this file">✕</span>
+    </div>`).join('');
 }
 function renderUploadReport(report){
   const el=document.getElementById('uploadReport'); if(!el)return;
   if(!report.length){el.innerHTML='';return;}
   const ok=report.filter(r=>r.ok).length, bad=report.length-ok;
-  el.innerHTML=`<div style="font-weight:700;font-size:12px;margin:8px 0 4px;">Load report — ${ok} ok${bad?`, <span style="color:#c0392b;">${bad} need attention</span>`:''}</div>`+
+  el.innerHTML=`<div style="font-weight:700;font-size:12px;margin:8px 0 4px;">Last upload — ${ok} ok${bad?`, <span style="color:#c0392b;">${bad} need attention</span>`:''}</div>`+
     report.map(r=>`<div style="font-size:11px;padding:3px 6px;border-left:3px solid ${r.ok?'#5ea637':'#e0a800'};background:${r.ok?'#f3f8ee':'#fff8e6'};margin-bottom:2px;border-radius:3px;">
       <b>${esc(r.file)}</b> — ${esc(r.msg)}</div>`).join('');
 }
 document.getElementById('docFile').addEventListener('change',async function(e){
   const files=[...e.target.files]; if(!files.length)return;
   const st=document.getElementById('docStatus');
-  const parsed=[], skipped=[];
-  let n=0;
+  const report=[]; let n=0;
+  // SDS first so items exist before their CoAs attach batches
+  const prepared=[];
   for(const f of files){
     n++; st.textContent=`Reading ${n}/${files.length} — ${f.name}…`;
-    let text='';
-    try{ text=await fileToText(f); }
-    catch(err){ skipped.push({file:f.name,kind:'?',ok:false,msg:'reader error ('+(err.message||'failed')+')'}); continue; }
-    if(!text || !text.trim()){ skipped.push({file:f.name,kind:'?',ok:false,msg:f.type.startsWith('image/')?'image — can’t auto-read text (paste it instead)':'no readable text (likely a scan — paste it instead)'}); continue; }
-    const {hz,pr}=extractStatements(text);
-    parsed.push({file:f.name,kind:classifyDoc(text,f.name),id:extractIdentity(text,f.name),batches:extractBatches(text,f.name),hz,pr});
+    let text='', ok=true, reason='';
+    try{ text=await fileToText(f); }catch(err){ ok=false; reason='reader error ('+(err.message||'failed')+')'; }
+    if(ok && (!text||!text.trim())){ ok=false; reason=f.type.startsWith('image/')?'image — can’t auto-read text (paste it instead)':'no readable text (likely a scan — paste it instead)'; }
+    const rec={ id:++state._fid, name:f.name, ok, reason,
+      kind: ok?classifyDoc(text,f.name):'unknown',
+      ident: ok?extractIdentity(text,f.name):{cas:'',code:'',name:'',hs:'',signal:''},
+      batch: '', hz:[], pr:[] };
+    if(ok){ const s=extractStatements(text); rec.hz=s.hz; rec.pr=s.pr; if(rec.kind==='coa')rec.batch=extractOneBatch(text,f.name); }
+    prepared.push(rec);
   }
-  const clearFirst=(document.getElementById('clearOnUpload')||{}).checked;
-  const report=ingestDocs(parsed,clearFirst).concat(skipped);
-  // keep preview indices valid
-  if(preview.i>=state.items.length)preview.i=Math.max(0,state.items.length-1);
-  preview.b=0;
-  renderAll(); renderUploadReport(report);
-  const items=state.items.length, batches=state.items.reduce((s,it)=>s+it.batches.filter(b=>b.batch).length,0);
+  prepared.sort((a,b)=>(a.kind==='sds'?0:1)-(b.kind==='sds'?0:1));
+  for(const rec of prepared){
+    state.files.push(rec);
+    const r=ingestFile(rec);
+    report.push({file:rec.name, ok:r.ok, msg:r.msg});
+  }
+  fixPreview(); renderAll(); renderFiles(); renderUploadReport(report); autosave();
+  const items=state.items.length, batches=state.items.reduce((s,it)=>s+it.batches.filter(b=>b.srcFile).length,0);
   const bad=report.filter(r=>!r.ok).length;
-  st.textContent=`Loaded ${files.length} file(s) → ${items} item(s), ${batches} batch(es).${bad?` ${bad} file(s) need attention (see report).`:''} Review before printing.`;
-  notify(`✓ ${files.length} file(s) → ${items} item(s), ${batches} batch(es)${bad?` · ${bad} need attention`:''}`);
+  st.textContent=`Added ${files.length} file(s). Total: ${state.files.length} file(s) → ${items} item(s), ${batches} batch(es).${bad?` ${bad} need attention (see below).`:''}`;
+  notify(`✓ Added ${files.length} file(s) · now ${items} item(s), ${batches} batch(es)${bad?` · ${bad} need attention`:''}`);
   e.target.value='';
 });
 
 function renderAll(){renderForm();renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
 document.body.addEventListener('input',e=>{const el=e.target;
-  if(el.dataset.tax){state.tax[el.dataset.tax]=el.value;return;} // no re-render while typing
+  if(el.dataset.tax){state.tax[el.dataset.tax]=el.value;autosave();return;} // no re-render while typing
   if(el.dataset.path){
     setPath(el.dataset.path,el.value);
     if(!el.closest('#invArea')){renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
+    autosave();
   }
 });
 document.body.addEventListener('change',e=>{const el=e.target;
-  if(el.dataset.role==='code'){const it=state.items[+el.dataset.i]; if(el.value===CUSTOM_CODE){it.code='';} else {fill(it,el.value);} renderAll();return;}
-  if(el.dataset.tax){renderInvoice();return;}  // re-render on blur for tax fields
-  if(el.tagName==='SELECT'&&el.dataset.path){setPath(el.dataset.path,el.value);renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
-  if(el.dataset.path&&el.closest('#invArea')){renderInvoice();} // re-render invoice on blur for inv-rate fields
+  if(el.dataset.role==='code'){const it=state.items[+el.dataset.i]; if(el.value===CUSTOM_CODE){it.code='';} else {fill(it,el.value);} renderAll();autosave();return;}
+  if(el.dataset.tax){renderInvoice();autosave();return;}  // re-render on blur for tax fields
+  if(el.tagName==='SELECT'&&el.dataset.path){setPath(el.dataset.path,el.value);renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();autosave();}
+  if(el.dataset.path&&el.closest('#invArea')){renderInvoice();autosave();} // re-render invoice on blur for inv-rate fields
 });
 document.body.addEventListener('click',e=>{
   const t=e.target.closest('[data-action]'); if(!t)return;
   const a=t.dataset.action,i=+t.dataset.i,b=+t.dataset.b,j=+t.dataset.j,kind=t.dataset.kind;
   if(a==='print'){printDoc(t.dataset.kind);return;}
-  if(a==='loadpaste'){const r=loadTextIntoPreviewed(document.getElementById('pasteBox').value,'pasted text');if(r)notify(`✓ Item ${preview.i+1} updated from pasted text · ${r.hz} hazard, ${r.pr} precautionary, ${r.batches} batch(es)`);return;}
+  if(a==='rm-file'){removeFile(+t.dataset.id);return;}
+  if(a==='rm-all-files'){removeAllFiles();return;}
+  if(a==='loadpaste'){ if(!state.items.length){state.items.push(blankItem());preview={i:0,b:0};} const r=loadTextIntoPreviewed(document.getElementById('pasteBox').value,'pasted text');if(r)notify(`✓ Item ${preview.i+1} updated from pasted text · ${r.hz} hazard, ${r.pr} precautionary, ${r.batches} batch(es)`);autosave();return;}
   if(a==='doc'){docType=t.dataset.doc;document.querySelectorAll('#docToggle button').forEach(x=>x.classList.toggle('on',x.dataset.doc===docType));renderInvoice();return;}
   if(a==='aud'){aud=t.dataset.aud;document.querySelectorAll('#audToggle button').forEach(x=>x.classList.toggle('on',x.dataset.aud===aud));renderInvoice();return;}
   if(a==='add-item')state.items.push(blankItem());
@@ -1727,7 +1790,7 @@ document.body.addEventListener('click',e=>{
   else if(a==='add-stmt')state.items[i][kind].push(['','']);
   else if(a==='del-stmt')state.items[i][kind].splice(j,1);
   // syncInrBtn handled via id click below
-  renderAll();
+  renderAll(); autosave();
 });
 /* keep the INR→USD read-only field in sync with the USD→INR rate */
 function refreshInrToUsd(){
@@ -1765,6 +1828,22 @@ document.getElementById('syncInrBtn').addEventListener('click',async function(){
     : `Couldn't reach the live-rate service (offline?). Used manual rate 1 USD = ₹${rate.toFixed(2)}.`; }
   notify(live?`✓ Live rate: 1 USD = ₹${rate.toFixed(2)}`:`⚠ Offline — using manual rate ₹${rate.toFixed(2)}`);
 });
+/* document name · Save · New (blank) */
+(function(){
+  const save=document.getElementById('saveDocBtn'), nw=document.getElementById('newDocBtn'), nm=document.getElementById('docNameInput');
+  if(nm) nm.addEventListener('input',function(){state.docName=this.value;autosave();});
+  if(save) save.addEventListener('click',function(){state.docName=(nm&&nm.value)||state.docName;saveWorking();notify('💾 Saved'+(state.docName?' — “'+state.docName+'”':' progress'));});
+  if(nw) nw.addEventListener('click',function(){
+    if(!confirm('Start a new blank document? This clears the current one — Save first if you want to keep it.'))return;
+    state=blankState(); preview={i:0,b:0}; aud='customer'; docType='proforma';
+    try{localStorage.removeItem(WORK_KEY);}catch(e){}
+    hydrateInputs(); renderAll(); renderFiles();
+    const ur=document.getElementById('uploadReport'); if(ur)ur.innerHTML='';
+    const ds=document.getElementById('docStatus'); if(ds)ds.textContent='';
+    document.querySelectorAll('#docToggle button').forEach(x=>x.classList.toggle('on',x.dataset.doc==='proforma'));
+    notify('✚ New blank document');
+  });
+})();
 /* per-label name overrides — edit here and the label reloads live from this box */
 (function(){
   const ii=document.getElementById('innerNameInput'), oi=document.getElementById('outerNameInput');
@@ -1992,7 +2071,7 @@ renderDispatches();
   window._openPreviewModal=open;
 })();
 
-renderAll();
+renderAll(); renderFiles();
 
 /* ── AUTH SYSTEM ─────────────────────────────────────────────── */
 (function(){
@@ -2103,8 +2182,12 @@ renderAll();
     if($('topbarAvatar'))$('topbarAvatar').textContent=ini;
     if($('topbarName'))$('topbarName').textContent=name;
     toast('Welcome, '+name+'!');
-    /* re-render now that the app is visible so previews lay out at real width */
+    const db=$('docBar'); if(db)db.style.display='flex';
+    /* restore any saved working document, then re-render at real width */
+    try{ if(window.loadWorking) loadWorking(); }catch(e){}
+    try{ if(window.hydrateInputs) hydrateInputs(); }catch(e){}
     if(window.renderAll){ try{ renderAll(); }catch(e){} }
+    try{ if(window.renderFiles) renderFiles(); }catch(e){}
   }
 
   /* ── auto-login from session ── */
