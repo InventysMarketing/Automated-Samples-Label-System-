@@ -1639,6 +1639,9 @@ function extractIdentity(text,fn){
   if(m=text.match(/\bHS\s*(?:Code|No\.?)?\s*[:\-]?\s*(\d{6,8})/i)) id.hs=m[1];
   if(m=text.match(/(?:Product\s*(?:name|identifier)|Material\s*name|Trade\s*name|Chemical\s*name|Product)\s*[:\-]\s*([^\n]{3,90})/i))
     id.name=m[1].trim().replace(/\s{2,}/g,' ').replace(/[;,]+$/,'');
+  // table layout with no colon: "Product Propoxyacetic acid  CAS ..."
+  if(!id.name && (m=text.match(/\bProduct\s+([A-Za-z][A-Za-z0-9()\-,'\s]{2,50}?)\s+CAS\b/i)))
+    id.name=m[1].replace(/\s+/g,' ').trim();
   const codes=Object.keys(CATALOG);
   for(const c of codes){ const esc=c.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&');
     if(new RegExp('(^|[^A-Za-z0-9])'+esc+'([^A-Za-z0-9]|$)').test(text) || new RegExp('(^|[^A-Za-z0-9])'+esc+'([^A-Za-z0-9]|$)','i').test(fn||'')){ id.code=c; break; } }
@@ -1651,7 +1654,7 @@ function extractIdentity(text,fn){
    Handles "Key: value", "Key - value" and 2-column "Parameter    Result" rows. */
 function extractKeyValues(text){
   const out=[], seen={};
-  const skipKey=/^(section|www|http|page|tel|fax|e-?mail|the|this|for|see|note|no\.?|sr|s\.?\s*no|©|®|™|revision|copyright)\b/i;
+  const skipKey=/^(section|www|http|page|tel|fax|e-?mail|the|this|for|see|note|no\.?|sr|s\.?\s*no|©|®|™|revision|copyright|format\s*no|format|udyam|iec|gstin)\b/i;
   const junkVal=/^(:|-|–|—|n\/?a|nil|\.+)$/i;
   (text||'').split(/\r?\n/).forEach(raw=>{
     let line=raw.replace(/\s+/g,' ').trim();
@@ -1678,13 +1681,46 @@ function extractQtyRef(text){
   const m=(text||'').match(/(?:quantity|qty|batch size|lot size|pack size|net\s*(?:wt|weight)|package size)\s*[:\-]?\s*([0-9][0-9.,]*)\s*(kg|kgs|g|gm|grams?|mg|mt|tons?)\b/i);
   return m?(m[1].replace(/,/g,'')+' '+m[2].toLowerCase()):'';
 }
-/* exactly ONE batch number for a CoA (best candidate; '' if none found) */
+/* exactly ONE batch number (structured token first, so a bare word like
+   "Number" from a split table cell is never mistaken for the batch) */
 function extractOneBatch(text,fn){
   let m;
-  if(m=text.match(/(?:Batch|Lot|B\.?\s*No|Batch\s*No)\s*(?:No\.?|Number|#)?\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/.\-]{3,30})/i)) return m[1].replace(/[.,;]+$/,'');
-  if(m=text.match(/(^|[^A-Za-z0-9])([A-Z]{2,6}[\/.\-][A-Z0-9]{1,6}[\/.\-]?\d{2}[.\-]?\d{2,4})(?=[^A-Za-z0-9]|$)/)) return m[2];
-  if(m=(fn||'').match(/([A-Z]{2,6}[.\/\-][A-Z0-9]{1,6}[.\/\-]\d{2,6})/i)) return m[1];
+  if(m=(text||'').match(/\b([A-Z]{2,6}\/[A-Z0-9]{1,5}\/\d{2}[-.\/]\d{2,4})\b/)) return m[1];          // PAA/FG/26-001
+  if(m=(fn||'').match(/([A-Z]{2,6}[.\/\-][A-Z0-9]{1,6}[.\/\-]\d{2,6})/i)) return m[1];                 // from filename
+  // labelled — but ONLY if the value contains a separator + digit (never a plain word)
+  if(m=(text||'').match(/(?:Batch|Lot)\s*(?:No\.?|Number|#)?\s*[:\-]?\s*([A-Z0-9]+[-.\/][A-Z0-9.\-\/]{2,25})/i)) return m[1].replace(/[.,;]+$/,'');
   return '';
+}
+/* parse an Inventys Certificate of Analysis (their AD/044 template) into
+   structured fields + a full captured list. Robust to table / no-colon layout. */
+function parseCoa(text){
+  const g=re=>{const m=(text||'').match(re);return m?m[1].replace(/\s+/g,' ').trim():'';};
+  const dateRe='([A-Za-z]{3,9}\\.?\\s*\\d{1,2},?\\s*\\d{4}|\\d{1,2}[.\\-\\/][A-Za-z0-9]{2,9}[.\\-\\/]\\d{2,4})';
+  const lastPct=label=>{const line=(text.match(new RegExp(label+'[^\\n]*','i'))||[''])[0];const p=line.match(/(\d+(?:\.\d+)?\s*%)/g);return p?p[p.length-1]:'';};
+  const f={
+    batch: extractOneBatch(text),
+    name: g(/\bProduct\s+([A-Za-z][A-Za-z0-9()\-,'\s]{2,50}?)\s+CAS\b/i),
+    cas: g(/CAS\s*No\.?\s*[:\-]?\s*(\d{2,7}-\d{2}-\d)/i),
+    mfg: g(new RegExp('Manufacturing Date\\s*[:\\-]?\\s*'+dateRe,'i')),
+    exp: g(new RegExp('Retest Date\\s*[:\\-]?\\s*'+dateRe,'i')),
+    doa: g(/Date of Analysis\s*[:\-]?\s*([0-9A-Za-z.\-\/]{6,14})/i),
+    qty: g(/Quantity\s*[:\-]?\s*([\d.,]+\s*(?:kg|kgs|g|mg|mt))/i),
+    formula: g(/Molecular Formul\w*\s*[:\-]?\s*([A-Za-z0-9 ]{2,20})/i).replace(/\s+/g,''),
+    manufacturer: g(/Manufacturer\s+([A-Za-z][^\n]{3,55}?)(?:\s+Manufacturing|\n)/i),
+  };
+  // build an ordered captured list of everything useful
+  const cap=[];
+  const push=(k,v)=>{ if(v && !cap.some(x=>x[0].toLowerCase()===k.toLowerCase())) cap.push([k,v]); };
+  push('Product',f.name); push('CAS No',f.cas); push('Molecular Formula',f.formula);
+  push('Batch Number',f.batch); push('Quantity',f.qty);
+  push('Manufacturing Date',f.mfg); push('Retest Date',f.exp); push('Date of Analysis',f.doa);
+  push('Manufacturer',f.manufacturer);
+  push('Description', g(/Description\s+[A-Za-z ]+?\s+Visual\s+([A-Za-z ]+?)(?=\s+\d|\s+Water|\n|$)/i));
+  push('Water Content (KF)', lastPct('Water Content'));
+  push('Purity by GC', lastPct('Purity by GC'));
+  push('Total Impurities', lastPct('Total Impurities'));
+  f.captured=cap;
+  return f;
 }
 /* find an item matching a parsed identity (CAS -> code -> name) */
 function matchItem(id){ return state.items.find(it=>
@@ -1800,7 +1836,19 @@ document.getElementById('docFile').addEventListener('change',async function(e){
       rec.mfgDate=pickField(text,'mfg|manufactur\\w*|date of mfg|batch date|prod\\w*|mfd');
       rec.expDate=pickField(text,'exp\\w*|retest|use before|best before|valid|shelf');
       rec.qty=extractQtyRef(text);
-      if(rec.kind==='coa') rec.batch=extractOneBatch(text,f.name);
+      if(rec.kind==='coa'){
+        const c=parseCoa(text);                    // Inventys CoA template parser
+        rec.batch = c.batch || extractOneBatch(text,f.name);
+        if(c.mfg)rec.mfgDate=c.mfg;
+        if(c.exp)rec.expDate=c.exp;
+        if(c.qty)rec.qty=c.qty;
+        if(c.name && !rec.ident.name)rec.ident.name=c.name;
+        if(c.cas && !rec.ident.cas)rec.ident.cas=c.cas;
+        // merge template-captured fields ahead of the generic ones
+        const seen={}; const merged=[];
+        (c.captured||[]).concat(rec.captured||[]).forEach(p=>{const k=p[0].toLowerCase(); if(p[1]&&!seen[k]){seen[k]=1;merged.push(p);}});
+        rec.captured=merged;
+      }
       if(rec.kind==='sds'){
         let m;
         if(m=text.match(/(?:conditions? for safe storage|storage conditions?|handling and storage|storage)\s*[:\-]?\s*([^\n]{6,180})/i)) rec.storage=m[1].trim();
