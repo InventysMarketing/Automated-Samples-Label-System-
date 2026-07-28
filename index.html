@@ -818,17 +818,21 @@ function innerBody(it,b,tier,u){
 }
 /* ---- outer label (base sizes; scaled by auto-fit) ---- */
 function outerBody(it,b,po,u){
-  const qty=(parseFloat(b.qty)||0).toFixed(3);
+  /* only show values we actually have — net weight, PO and HS stay blank when
+     not found (never fabricate 0.000 or a dash). LOT is filled from the CoA. */
+  const netWt = b.qty ? `${esc(b.qty)} ${esc(it.unit)}` : '';
   const signalColor=it.signal==='Danger'?'#c2410c':it.signal==='Warning'?'#b45309':'#333';
+  const field=(k,v)=>`<div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">${k}</span><span class="lab-v">${v||'&nbsp;'}</span></div>`;
   return `<div class="lab-pad flow" style="padding:${u(3.5)};display:flex;flex-direction:column;gap:${u(1.0)};">
     <div class="lab-hd">${logoImg(6.5,u)}<div style="text-align:right;"><div class="lab-co" style="font-size:${u(2.5)};">Inventys Research Company Pvt Ltd</div><div style="font-size:${u(2.0)};color:#666;font-family:var(--label-sans);">MADE IN INDIA</div></div></div>
     <div class="lab-div"></div>
     <div class="lab-name" style="font-size:${u(3.9)};margin-top:${u(.2)};">${esc(outerNameOf(it))||'&nbsp;'}</div>
     <div style="display:flex;flex-wrap:wrap;gap:${u(1.2)} ${u(4.5)};">
-      <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)||'—'}</span></div>
-      <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">PO</span><span class="lab-v">${esc(po)||'—'}</span></div>
-      <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">LOT</span><span class="lab-v">${esc(b.batch)||'—'}</span></div>
-      <div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">QTY</span><span class="lab-v">${qty} ${esc(it.unit)}</span></div>
+      ${field('LOT',esc(b.batch))}
+      ${field('NET WT',netWt)}
+      ${field('CAS#',esc(it.cas))}
+      ${field('HS',esc(it.hs))}
+      ${field('PO',esc(po))}
       ${it.signal?`<div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">GHS SIGNAL</span><span class="lab-v" style="color:${signalColor};font-weight:700;">${esc(it.signal).toUpperCase()}</span></div>`:''}
     </div>
     <div class="lab-div"></div>
@@ -1685,13 +1689,15 @@ function extractQtyRef(text){
    "Number" from a split table cell is never mistaken for the batch) */
 function extractOneBatch(text,fn){
   let m;
-  // 1) the CoA's own token, exactly as written (tolerant of stray spaces pdf.js
-  //    may insert around the slashes/dash), preserving the slash-dash format
-  if(m=(text||'').match(/\b([A-Z]{2,6})\s*\/\s*([A-Z0-9]{1,5})\s*\/\s*(\d{2})\s*-\s*(\d{2,4})\b/))
-     return `${m[1]}/${m[2]}/${m[3]}-${m[4]}`;
-  if(m=(text||'').match(/\b([A-Z]{2,6}\/[A-Z0-9]{1,5}\/\d{2}[-.]\d{2,4})\b/)) return m[1];
-  // 2) a labelled value that contains a separator + digit (never a plain word)
-  if(m=(text||'').match(/(?:Batch|Lot)\s*(?:No\.?|Number|#)?\s*[:\-]?\s*([A-Z0-9]+[-.\/][A-Z0-9.\-\/]{2,25})/i)) return m[1].replace(/\s+/g,'').replace(/[.,;]+$/,'');
+  // 1) value right after a Batch/Lot label — captured VERBATIM (just stray
+  //    spaces removed), must contain a separator + end in a digit
+  if(m=(text||'').match(/(?:Batch\s*(?:Number|No\.?)?|Lot\s*(?:No\.?)?)\s*[:\-]?\s*([A-Z0-9][A-Z0-9.\/\-]*[0-9])/i)){
+    const v=m[1].replace(/\s+/g,'');
+    if(/[.\/\-]/.test(v)) return v;                                   // e.g. PAA/FG/26-001, exactly as written
+  }
+  // 2) the CoA's own structured token anywhere in the text, verbatim
+  if(m=(text||'').match(/[A-Z]{2,6}\s*\/\s*[A-Z0-9]{1,5}\s*\/\s*\d{2}\s*-\s*\d{1,4}/)) return m[0].replace(/\s+/g,'');
+  if(m=(text||'').match(/[A-Z]{2,6}[.\/\-][A-Z0-9]{1,6}[.\/\-]\d{2}(?:-\d{1,4})?/)) return m[0].replace(/\s+/g,'');
   // 3) last resort: the filename, normalised to the CoA's slash-dash style
   if(m=(fn||'').match(/([A-Z]{2,6})[.\/\-]([A-Z0-9]{1,6})[.\/\-](\d{2})[-.]?(\d{2,4})/i))
      return `${m[1]}/${m[2]}/${m[3]}-${m[4]}`.toUpperCase();
