@@ -728,8 +728,8 @@ const CATALOG={
 const CUSTOM_CODE='__custom__';
 function customsName(code){const c=CATALOG[code];return c?CPRE+c.customer+CSUF:'';}
 function fill(item,code){const c=CATALOG[code];if(!c)return;item.code=code;item.customer=c.customer;item.airline=c.airline;item.customs=customsName(code);item.cas=c.cas;item.hs=c.hs;item.signal=c.signal;item.hazards=c.hazards.map(x=>x.slice());item.precautions=c.precautions.map(x=>x.slice());item.storage=c.storage;item.transport=c.transport;}
-function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1'};}
-function blankItem(){return {code:'',customer:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',batches:[fb()]};}
+function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1',mfgDate:'',expDate:'',lotSize:'',captured:[]};}
+function blankItem(){return {code:'',customer:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
 function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rateInr=rateInr;it.batches=batches;fill(it,code);return it;}
 /* Everything starts blank; a saved document (localStorage) is restored on login.
    A few Inventys-constant defaults are kept so calculations don't break. */
@@ -881,6 +881,14 @@ function stmtRows(it,i,kind){
     <button class="addbtn" data-action="add-stmt" data-i="${i}" data-kind="${kind}">＋ add ${kind==='hazards'?'hazard':'precautionary'} statement</button>
   </div>`;
 }
+/* read-only display of every field captured from a document (nothing lost) */
+function capturedPanel(cap,title){
+  cap=cap||[]; if(!cap.length)return '';
+  return `<details style="margin-top:10px;"><summary style="cursor:pointer;font-size:11px;color:var(--orange);font-weight:700;">▸ ${esc(title)} — ${cap.length} field${cap.length>1?'s':''} captured</summary>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:11px;margin-top:6px;padding:8px 10px;background:#f6f8fb;border:1px solid #e6ebf1;border-radius:6px;">
+      ${cap.map(p=>`<div style="color:var(--slate);font-weight:700;">${esc(p[0])}</div><div style="font-family:var(--mono);">${esc(p[1])}</div>`).join('')}
+    </div></details>`;
+}
 function renderForm(){
   const codes=Object.keys(CATALOG);
   itemsEl.innerHTML=state.items.map((it,i)=>`
@@ -909,6 +917,7 @@ function renderForm(){
           <label class="f"><span class="lab">Storage conditions</span><textarea class="in" data-path="items.${i}.storage">${esc(it.storage)}</textarea></label>
           <label class="f"><span class="lab">Transport</span><textarea class="in" data-path="items.${i}.transport">${esc(it.transport)}</textarea></label>
         </div>
+        ${capturedPanel(it.captured,'Captured from the SDS')}
         <div class="sub-h"><span class="t">Batches</span><span class="cnt">${it.batches.length} batch(es)</span><span class="grow" style="flex:1;"></span><label style="font-size:11px;color:var(--slate);display:inline-flex;align-items:center;gap:5px;">Unit <select class="in" style="width:auto;padding:3px 6px;" data-path="items.${i}.unit"><option value="Kg" ${it.unit==='Kg'?'selected':''}>Kg</option><option value="g" ${it.unit==='g'?'selected':''}>g</option><option value="mg" ${it.unit==='mg'?'selected':''}>mg</option></select></label></div>
         ${it.batches.map((b,bi)=>`
           <div class="batch ${preview.i===i&&preview.b===bi?'previewing':''}">
@@ -924,6 +933,13 @@ function renderForm(){
               <label class="f"><span class="lab">Bottle size</span>
                 <select class="in" data-path="items.${i}.batches.${bi}.bottleId">${BOTTLES.map(x=>`<option value="${x.id}" ${x.id===b.bottleId?'selected':''}>${x.name} · ${x.h}×${x.w}cm</option>`).join('')}</select></label>
             </div>
+            <div class="batch-grid" style="margin-top:8px;">
+              <label class="f"><span class="lab">Mfg date <span class="mono">(CoA)</span></span><input class="in code" data-path="items.${i}.batches.${bi}.mfgDate" value="${esc(b.mfgDate||'')}" placeholder="—"></label>
+              <label class="f"><span class="lab">Exp / retest <span class="mono">(CoA)</span></span><input class="in code" data-path="items.${i}.batches.${bi}.expDate" value="${esc(b.expDate||'')}" placeholder="—"></label>
+              <label class="f"><span class="lab">CoA lot size <span class="mono">(ref)</span></span><input class="in code" data-path="items.${i}.batches.${bi}.lotSize" value="${esc(b.lotSize||'')}" placeholder="—"></label>
+              <div></div>
+            </div>
+            ${capturedPanel(b.captured,'Captured from this CoA')}
           </div>`).join('')}
         <button class="btn green tiny" data-action="add-batch" data-i="${i}" style="margin-top:4px;">＋ Add batch</button>
       </div>
@@ -1631,6 +1647,37 @@ function extractIdentity(text,fn){
   if(!id.cas && id.code && CATALOG[id.code]) id.cas=CATALOG[id.code].cas;
   return id;
 }
+/* capture EVERY labelled field in a document so nothing is lost.
+   Handles "Key: value", "Key - value" and 2-column "Parameter    Result" rows. */
+function extractKeyValues(text){
+  const out=[], seen={};
+  const skipKey=/^(section|www|http|page|tel|fax|e-?mail|the|this|for|see|note|no\.?|sr|s\.?\s*no|©|®|™|revision|copyright)\b/i;
+  const junkVal=/^(:|-|–|—|n\/?a|nil|\.+)$/i;
+  (text||'').split(/\r?\n/).forEach(raw=>{
+    let line=raw.replace(/\s+/g,' ').trim();
+    if(!line||line.length>160)return;
+    let m=line.match(/^([A-Za-z][A-Za-z0-9 ()\/.,%#+&-]{1,40}?)\s*[:：]\s*(.+)$/);          // Key: value
+    if(!m) m=line.match(/^([A-Za-z][A-Za-z0-9 ()\/.,%#+&-]{1,40}?)\s{2,}([A-Za-z0-9<>].{0,70})$/); // Param    Result
+    if(!m) return;
+    let k=m[1].trim().replace(/[.:\-–—]+$/,'').trim();
+    let v=m[2].trim().replace(/[;]+$/,'').trim();
+    if(!k||!v||junkVal.test(v))return;
+    if(skipKey.test(k)||/^\d+(\.\d+)?$/.test(k)||k.length<2)return;
+    const key=k.toLowerCase(); if(seen[key])return; seen[key]=1;
+    if(v.length>90)v=v.slice(0,90)+'…';
+    out.push([k,v]);
+  });
+  return out.slice(0,50);
+}
+function pickField(text,labels){
+  const m=(text||'').match(new RegExp('(?:'+labels+')\\s*(?:date|no\\.?|number)?\\s*[:\\-]?\\s*'+
+    '([0-9]{1,2}[\\s./-][A-Za-z0-9]{2,9}[\\s./-][0-9]{2,4}|[A-Za-z]{3,9}\\s+[0-9]{1,2},?\\s*[0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2})','i'));
+  return m?m[1].trim():'';
+}
+function extractQtyRef(text){
+  const m=(text||'').match(/(?:quantity|qty|batch size|lot size|pack size|net\s*(?:wt|weight)|package size)\s*[:\-]?\s*([0-9][0-9.,]*)\s*(kg|kgs|g|gm|grams?|mg|mt|tons?)\b/i);
+  return m?(m[1].replace(/,/g,'')+' '+m[2].toLowerCase()):'';
+}
 /* exactly ONE batch number for a CoA (best candidate; '' if none found) */
 function extractOneBatch(text,fn){
   let m;
@@ -1663,20 +1710,27 @@ function ingestFile(f){
   if(f.kind==='unknown' && empty) return {ok:false,msg:'couldn’t tell what this is or read any data — check it or paste the text'};
   const it=ensureItem(f.ident);
   if(!it.srcFiles.includes(f.id)) it.srcFiles.push(f.id);
+  const mergeCap=(arr,extra)=>{ const seen={}; (arr||[]).forEach(p=>seen[p[0].toLowerCase()]=1); (extra||[]).forEach(p=>{const k=p[0].toLowerCase(); if(!seen[k]){seen[k]=1;arr.push(p);}}); };
   if(f.kind==='sds'){
     if(f.hz.length)it.hazards=f.hz;
     if(f.pr.length)it.precautions=f.pr;
     if(f.ident.signal)it.signal=f.ident.signal;
+    if(f.storage && !it.storage)it.storage=f.storage;
+    if(f.transport && !it.transport)it.transport=f.transport;
+    if(!it.captured)it.captured=[]; mergeCap(it.captured,f.captured);
     it.sdsFile=f.id;
     const idx=state.items.indexOf(it)+1;
-    return {ok:true,msg:`SDS → Item ${idx} (${it.customer||it.code||it.cas||'item'}) · ${f.hz.length}H / ${f.pr.length}P`};
+    return {ok:true,msg:`SDS → Item ${idx} (${it.customer||it.code||it.cas||'item'}) · ${f.hz.length}H / ${f.pr.length}P · ${(f.captured||[]).length} fields captured`};
   }
-  // CoA (or unknown-with-data): add exactly one batch
+  // CoA (or unknown-with-data): add exactly one batch, carrying ALL captured data
   it.batches=it.batches.filter(b=>b.batch||b.srcFile);           // drop the pristine empty placeholder
-  it.batches.push({batch:f.batch||'',qty:'',bottleId:(it.batches[0]&&it.batches[0].bottleId)||'b100',copies:'1',srcFile:f.id});
-  if(!it.batches.length)it.batches=[fb()];
+  it.batches.push({batch:f.batch||'',qty:'',bottleId:(it.batches[0]&&it.batches[0].bottleId)||'b100',copies:'1',srcFile:f.id,
+    mfgDate:f.mfgDate||'',expDate:f.expDate||'',lotSize:f.qty||'',captured:(f.captured||[]).slice()});
+  // a CoA also confirms item identity — fold any captured product-level facts up to the item
+  if(!it.captured)it.captured=[];
   const idx=state.items.indexOf(it)+1;
-  return {ok:!!f.batch, msg:`CoA → Item ${idx} (${it.customer||it.code||it.cas||'item'}) · batch ${f.batch||'⚠ number not read — fill it in'}`};
+  const nCap=(f.captured||[]).length;
+  return {ok:!!f.batch, msg:`CoA → Item ${idx} (${it.customer||it.code||it.cas||'item'}) · batch ${f.batch||'⚠ not read'} · ${nCap} field(s) captured`};
 }
 function fixPreview(){ if(preview.i>=state.items.length)preview.i=Math.max(0,state.items.length-1); preview.b=0; }
 function removeFile(id){
@@ -1739,8 +1793,21 @@ document.getElementById('docFile').addEventListener('change',async function(e){
     const rec={ id:++state._fid, name:f.name, ok, reason,
       kind: ok?classifyDoc(text,f.name):'unknown',
       ident: ok?extractIdentity(text,f.name):{cas:'',code:'',name:'',hs:'',signal:''},
-      batch: '', hz:[], pr:[] };
-    if(ok){ const s=extractStatements(text); rec.hz=s.hz; rec.pr=s.pr; if(rec.kind==='coa')rec.batch=extractOneBatch(text,f.name); }
+      batch: '', hz:[], pr:[], captured:[], mfgDate:'', expDate:'', qty:'', storage:'', transport:'' };
+    if(ok){
+      const s=extractStatements(text); rec.hz=s.hz; rec.pr=s.pr;
+      rec.captured=extractKeyValues(text);
+      rec.mfgDate=pickField(text,'mfg|manufactur\\w*|date of mfg|batch date|prod\\w*|mfd');
+      rec.expDate=pickField(text,'exp\\w*|retest|use before|best before|valid|shelf');
+      rec.qty=extractQtyRef(text);
+      if(rec.kind==='coa') rec.batch=extractOneBatch(text,f.name);
+      if(rec.kind==='sds'){
+        let m;
+        if(m=text.match(/(?:conditions? for safe storage|storage conditions?|handling and storage|storage)\s*[:\-]?\s*([^\n]{6,180})/i)) rec.storage=m[1].trim();
+        if(/\bnot\b[^\n]{0,20}dangerous goods|not\s+regulated|not\s+classified as dangerous/i.test(text)) rec.transport='Not a Dangerous Goods';
+        else if(m=text.match(/\bUN\s?(\d{4})\b[^\n]{0,80}/i)) rec.transport=m[0].trim();
+      }
+    }
     prepared.push(rec);
   }
   prepared.sort((a,b)=>(a.kind==='sds'?0:1)-(b.kind==='sds'?0:1));
