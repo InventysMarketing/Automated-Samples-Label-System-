@@ -1646,8 +1646,8 @@ function extractIdentity(text,fn){
   for(const c of codes){ const esc=c.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&');
     if(new RegExp('(^|[^A-Za-z0-9])'+esc+'([^A-Za-z0-9]|$)').test(text) || new RegExp('(^|[^A-Za-z0-9])'+esc+'([^A-Za-z0-9]|$)','i').test(fn||'')){ id.code=c; break; } }
   if(/\bdanger\b/i.test(text)) id.signal='Danger'; else if(/\bwarning\b/i.test(text)) id.signal='Warning';
-  if(!id.name && id.code && CATALOG[id.code]) id.name=CATALOG[id.code].customer;
-  if(!id.cas && id.code && CATALOG[id.code]) id.cas=CATALOG[id.code].cas;
+  /* NOTE: we intentionally do NOT backfill name/CAS/HS from the internal
+     catalog here — uploads capture only what the document actually contains. */
   return id;
 }
 /* capture EVERY labelled field in a document so nothing is lost.
@@ -1685,10 +1685,16 @@ function extractQtyRef(text){
    "Number" from a split table cell is never mistaken for the batch) */
 function extractOneBatch(text,fn){
   let m;
-  if(m=(text||'').match(/\b([A-Z]{2,6}\/[A-Z0-9]{1,5}\/\d{2}[-.\/]\d{2,4})\b/)) return m[1];          // PAA/FG/26-001
-  if(m=(fn||'').match(/([A-Z]{2,6}[.\/\-][A-Z0-9]{1,6}[.\/\-]\d{2,6})/i)) return m[1];                 // from filename
-  // labelled — but ONLY if the value contains a separator + digit (never a plain word)
-  if(m=(text||'').match(/(?:Batch|Lot)\s*(?:No\.?|Number|#)?\s*[:\-]?\s*([A-Z0-9]+[-.\/][A-Z0-9.\-\/]{2,25})/i)) return m[1].replace(/[.,;]+$/,'');
+  // 1) the CoA's own token, exactly as written (tolerant of stray spaces pdf.js
+  //    may insert around the slashes/dash), preserving the slash-dash format
+  if(m=(text||'').match(/\b([A-Z]{2,6})\s*\/\s*([A-Z0-9]{1,5})\s*\/\s*(\d{2})\s*-\s*(\d{2,4})\b/))
+     return `${m[1]}/${m[2]}/${m[3]}-${m[4]}`;
+  if(m=(text||'').match(/\b([A-Z]{2,6}\/[A-Z0-9]{1,5}\/\d{2}[-.]\d{2,4})\b/)) return m[1];
+  // 2) a labelled value that contains a separator + digit (never a plain word)
+  if(m=(text||'').match(/(?:Batch|Lot)\s*(?:No\.?|Number|#)?\s*[:\-]?\s*([A-Z0-9]+[-.\/][A-Z0-9.\-\/]{2,25})/i)) return m[1].replace(/\s+/g,'').replace(/[.,;]+$/,'');
+  // 3) last resort: the filename, normalised to the CoA's slash-dash style
+  if(m=(fn||'').match(/([A-Z]{2,6})[.\/\-]([A-Z0-9]{1,6})[.\/\-](\d{2})[-.]?(\d{2,4})/i))
+     return `${m[1]}/${m[2]}/${m[3]}-${m[4]}`.toUpperCase();
   return '';
 }
 /* parse an Inventys Certificate of Analysis (their AD/044 template) into
@@ -1729,11 +1735,12 @@ function matchItem(id){ return state.items.find(it=>
   (it.customer&&id.name&&normName(it.customer)===normName(id.name)) ); }
 function ensureItem(id){
   let it=matchItem(id);
-  if(!it){ it=blankItem(); it.fromFile=true; it.srcFiles=[]; if(id.code&&CATALOG[id.code])fill(it,id.code); state.items.push(it); }
+  /* create a bare item — no catalog auto-fill; only document data is used */
+  if(!it){ it=blankItem(); it.fromFile=true; it.srcFiles=[]; state.items.push(it); }
   if(!it.srcFiles)it.srcFiles=[];
   if(id.cas&&!it.cas)it.cas=id.cas;
   if(id.code&&!it.code)it.code=id.code;
-  if(id.hs&&!it.hs)it.hs=id.hs;
+  if(id.hs&&!it.hs)it.hs=id.hs;                       // only if the document actually had an HS code
   if(id.name&&!it.customer){it.customer=id.name; if(!it.airline)it.airline=id.name;}
   return it;
 }
