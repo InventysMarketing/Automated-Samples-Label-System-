@@ -1104,7 +1104,7 @@ function renderInvoice(){
       rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">BATCH # ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rate" value="${esc(it.rate)}"></td><td class="r">${amt.toFixed(2)}</td></tr>`;});
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--orange);margin-bottom:8px;">${title}</div>
       <table class="inv"><thead><tr><th style="width:34px;">#</th><th>Description</th><th class="r" style="width:110px;">Qty (Kg)</th><th class="r" style="width:130px;">Rate (USD/Kg)</th><th class="r" style="width:120px;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
-      <div class="inv-totals"><div class="row grand"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div><div class="inv-words">${wordsUSD(sub)}</div></div>`;
+      <div class="inv-totals"><div class="row grand"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div><div class="inv-words">${wordsUSD(sub)}</div><div class="inv-words" style="margin-top:4px;"><b>Incoterms:</b> CIF${state.order.portOfDischarge?' '+esc(state.order.portOfDischarge):''} — Cost, Insurance &amp; Freight.</div></div>`;
     note.innerHTML=`<b>${title}</b> — billed with the chosen name (Customer / Airline / Customs). Pricing = Qty × Rate.`;
   } else {
     const cg=parseFloat(state.tax.cgst)||0, sg=parseFloat(state.tax.sgst)||0, ig=parseFloat(state.tax.igst)||0;
@@ -1227,6 +1227,7 @@ function docMeta(){
     <tr><td style="padding:4px 7px;line-height:1.6;">
       <b>Payment:</b> ${esc(o.paymentTerms||(o.sampleType==='paid'?'As per agreed terms':'Free of cost sample — For R&D purpose, not for sale'))} &nbsp;·&nbsp;
       <b>Delivery:</b> ${esc(st.mode||'By Air (Door Delivery)')} &nbsp;·&nbsp;
+      <b>Incoterms:</b> CIF${o.portOfDischarge?' '+esc(o.portOfDischarge):''} (Cost, Insurance &amp; Freight) &nbsp;·&nbsp;
       <b>Transportation:</b> ${esc(st.carrier||st.mode||'By Air')}${st.awb?' · AWB '+esc(st.awb):''} &nbsp;·&nbsp;
       <b>Remarks:</b> ${esc(o.placeOfSupply?('Place of Supply: '+o.placeOfSupply):'—')}
     </td></tr>
