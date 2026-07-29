@@ -704,8 +704,8 @@ const BOTTLES=[
   {id:'b500',name:'500 mL',h:7.0,w:14.2,tier:'large',ow:16.0,oh:18.0},
 ];
 const bottle=id=>BOTTLES.find(b=>b.id===id)||BOTTLES[4];
-const CPRE='Advanced Intermediates for manufacturing Active Ingredients used in Pharmaceuticals and/or Agrochemicals Specialty Applications — ';
-const CSUF=', Specialty Chemical for Lifesciences application';
+const CPRE='Advanced Intermediates for manufacturing Active Ingredients used in Pharmaceuticals and/or Agrochemicals Specialty Applications ';
+const CSUF=' Specialty Chemical for Lifesciences application';
 const CATALOG={
   'DMBA':{customer:'2,4-Dimethoxybenzaldehyde',airline:'2,4-Dimethoxybenzaldehyde',cas:'613-45-6',hs:'29121990',signal:'Warning',
     hazards:[['H315','Causes skin irritation'],['H319','Causes serious eye irritation']],precautions:[['P280','Wear protective gloves and eye protection']],
@@ -726,10 +726,23 @@ const CATALOG={
     storage:'Store in a dry, well-ventilated place at room temperature. Keep container tightly closed.',transport:'Not a Dangerous Goods'},
 };
 const CUSTOM_CODE='__custom__';
-function customsName(code){const c=CATALOG[code];return c?CPRE+c.customer+CSUF:'';}
-function fill(item,code){const c=CATALOG[code];if(!c)return;item.code=code;item.customer=c.customer;item.airline=c.airline;item.customs=customsName(code);item.cas=c.cas;item.hs=c.hs;item.signal=c.signal;item.hazards=c.hazards.map(x=>x.slice());item.precautions=c.precautions.map(x=>x.slice());item.storage=c.storage;item.transport=c.transport;}
+/* ---- name taxonomy ----
+   customer  = full material / compound name (client)   e.g. 2-Propoxyacetic acid
+   matShort  = material name (short)                     e.g. Propoxyacetic acid
+   code      = product code                              e.g. PAA
+   Customs (long)  = CPRE + "<code> <full name>" + CSUF   (auto-synced)
+   Airline label   = product code (row 1) + short name (row 2)
+   Outer label     = product code (default; editable)
+   Customer invoice= full material name only                                    */
+function fullMatName(it){return (it.customer||'').trim();}
+function shortMatName(it){return (it.matShort&&it.matShort.trim())||fullMatName(it);}
+function customsLong(it){const mid=[it.code,fullMatName(it)].filter(Boolean).join(' ').trim();return mid?(CPRE+mid+CSUF):'';}
+function customsName(code){const c=CATALOG[code];return c?(CPRE+(code+' '+c.customer).trim()+CSUF):'';}
+/* strip trailing molecular-structure labels (H3C, OH, O…) but keep leading locants like "2-" */
+function cleanChemName(s){s=(s||'').replace(/\s+/g,' ').trim();if(/\bacid\b/i.test(s))s=s.replace(/\b(acid)\b[\s\S]*$/i,'$1');s=s.replace(/(?:\s+(?:H3C|CH3|H\s*3\s*C|C\s*H\s*3|OH|HO|O|H))+$/,'').trim();return s;}
+function fill(item,code){const c=CATALOG[code];if(!c)return;item.code=code;item.customer=c.customer;item.airline=c.airline;item.cas=c.cas;item.hs=c.hs;item.signal=c.signal;item.hazards=c.hazards.map(x=>x.slice());item.precautions=c.precautions.map(x=>x.slice());item.storage=c.storage;item.transport=c.transport;}
 function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1',mfgDate:'',expDate:'',lotSize:'',captured:[]};}
-function blankItem(){return {code:'',customer:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
+function blankItem(){return {code:'',customer:'',matShort:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
 function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rateInr=rateInr;it.batches=batches;fill(it,code);return it;}
 /* Everything starts blank; a saved document (localStorage) is restored on login.
    A few Inventys-constant defaults are kept so calculations don't break. */
@@ -777,7 +790,7 @@ function consigneeInfo(){const o=state.order;
   return {name:o.consignee||o.buyer,toOrder:o.consigneeToOrder,address:o.consigneeAddress||o.buyerAddress||o.country,attn:o.consigneeAttn,contact:o.consigneeContact,country:o.country};}
 /* label name resolution: per-label override wins, else customer name */
 function innerNameOf(it){return (it.innerName&&it.innerName.trim())||it.customer;}
-function outerNameOf(it){return (it.outerName&&it.outerName.trim())||it.customer;}
+function outerNameOf(it){return (it.outerName&&it.outerName.trim())||it.code||it.customer;}
 const US=x=>(x*SCALE/10)+'px';
 const UP=x=>x+'mm';
 function logoImg(h,u){return `<img class="lab-logo" src="${LOGO}" style="height:${u(h)};width:${u(h*LOGO_AR)};">`;}
@@ -903,17 +916,22 @@ function renderForm(){
         <div class="grid-codename">
           <label class="f"><span class="lab">Product code</span>
             <select class="in codepick" data-role="code" data-i="${i}"><option value="${CUSTOM_CODE}" ${!it.code?'selected':''}>✎ Custom (type manually)</option>${codes.map(c=>`<option value="${c}" ${c===it.code?'selected':''}>${c}</option>`).join('')}</select></label>
-          <label class="f"><span class="lab">Customer name <span class="mono">(client)</span></span><input class="in" data-path="items.${i}.customer" value="${esc(it.customer)}"></label>
+          <label class="f"><span class="lab">Material name <span class="mono">(full · client)</span></span><input class="in" data-path="items.${i}.customer" value="${esc(it.customer)}"></label>
         </div>
         <div class="grid4" style="margin-top:12px;">
+          <label class="f"><span class="lab">Material name <span class="mono">(short)</span></span><input class="in" data-path="items.${i}.matShort" value="${esc(it.matShort||'')}" placeholder="shorter name"></label>
           <label class="f"><span class="lab">CAS <span class="mono">no.</span></span><input class="in code" data-path="items.${i}.cas" value="${esc(it.cas)}"></label>
           <label class="f"><span class="lab">HS <span class="mono">code</span></span><input class="in code" data-path="items.${i}.hs" value="${esc(it.hs)}" placeholder="—"></label>
+          <div></div>
+        </div>
+        <div class="grid2" style="margin-top:12px;">
           <label class="f"><span class="lab">Rate <span class="mono">USD/Kg</span></span><input class="in code" data-path="items.${i}.rate" value="${esc(it.rate)}"></label>
           <label class="f"><span class="lab">Rate <span class="mono">Rs/Kg</span></span><input class="in code" data-path="items.${i}.rateInr" value="${esc(it.rateInr)}"></label>
         </div>
-        <div class="grid2" style="margin-top:12px;">
-          <label class="f"><span class="lab">Airline name <span class="mono">(DG / shipping)</span></span><input class="in" data-path="items.${i}.airline" value="${esc(it.airline)}"></label>
-          <label class="f"><span class="lab">Customs name <span class="mono">(long)</span></span><textarea class="in" data-path="items.${i}.customs">${esc(it.customs)}</textarea></label>
+        <div style="margin-top:12px;padding:9px 11px;background:#f6f8fb;border:1px solid #e6ebf1;border-radius:6px;font-size:11px;line-height:1.5;">
+          <div style="font-weight:700;color:var(--slate);margin-bottom:3px;">Auto-synced names (used on the documents)</div>
+          <div><b>Airline label</b> — <span class="mono">${esc(it.code||'—')}</span> / ${esc(shortMatName(it))||'<i>short name</i>'} <span style="color:var(--muted);">(code above name)</span></div>
+          <div style="margin-top:2px;"><b>Customs (long)</b> — ${esc(customsLong(it))||'<span style="color:var(--muted);">set product code + material name</span>'}</div>
         </div>
         ${stmtRows(it,i,'hazards')}
         ${stmtRows(it,i,'precautions')}
@@ -1036,7 +1054,26 @@ function wINR(n){if(n===0)return 'Zero';let s='';const cr=Math.floor(n/1e7);n%=1
 function wordsINR(t){const d=Math.floor(t+1e-9),p=Math.round((t-d)*100);let s='Rupees '+wINR(d);return s+(p>0?' and '+wINR(p)+' Paise Only.':' Only.');}
 
 /* ---- invoice (proforma USD + GST INR) ---- */
-function nameFor(it){return aud==='customer'?it.customer:aud==='airline'?it.airline:it.customs;}
+/* plain-text name for a given audience (customer = full material name only,
+   airline = "code — short name", customs = the long synced description) */
+function nameFor(it){
+  if(aud==='airline'){ return [it.code, shortMatName(it)].filter(Boolean).join(' — '); }
+  if(aud==='customs'){ return customsLong(it); }
+  return fullMatName(it);
+}
+/* rich description cell — for the airline audience the product code sits on its
+   own row above the (short) name */
+function descHTML(it){
+  if(aud==='airline'){
+    return `<div class="inv-desc">${it.code?`<div style="font-weight:700;">${esc(it.code)}</div>`:''}<div>${esc(shortMatName(it))}</div></div>`;
+  }
+  return `<div class="inv-desc">${esc(nameFor(it))}</div>`;
+}
+/* print (<b>…</b>) variant — airline shows code above the short name */
+function descPrint(it){
+  if(aud==='airline'){ return `<b>${esc(it.code||'')}</b>${it.code?'<br>':''}${esc(shortMatName(it))}`; }
+  return `<b>${esc(nameFor(it))}</b>`;
+}
 function lineMetrics(it){
   const pkgs=it.batches.reduce((s,b)=>s+Math.max(0,parseInt(b.copies)||0),0);
   const totNet=it.batches.reduce((s,b)=>s+(parseFloat(b.qty)||0)*Math.max(0,parseInt(b.copies)||0),0);
@@ -1052,7 +1089,7 @@ function renderInvoice(){
   if(docType==='packing'){
     let rows='',totPkgs=0,totNet=0;
     state.items.forEach((it,i)=>{const m=lineMetrics(it);totPkgs+=m.pkgs;totNet+=m.totNet;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
-      rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(nameFor(it))}</div>${bb?`<div class="inv-sub">Batch/Lot: ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td>Sample for R&amp;D</td></tr>`;});
+      rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">Batch/Lot: ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td>Sample for R&amp;D</td></tr>`;});
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:8px;">PACKING LIST</div>
       <table class="inv"><thead><tr><th style="width:34px;">S.No</th><th>Description</th><th class="r" style="width:70px;">Pkgs</th><th class="r" style="width:100px;">Net/Pkg (Kg)</th><th class="r" style="width:110px;">Total Net (Kg)</th><th style="width:130px;">Remarks</th></tr></thead><tbody>${rows}</tbody>
       <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td>Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
@@ -1064,7 +1101,7 @@ function renderInvoice(){
     const title='PROFORMA INVOICE';
     let sub=0,rows='';
     state.items.forEach((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rate)||0,amt=m.totNet*rate;sub+=amt;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');
-      rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(nameFor(it))}</div>${bb?`<div class="inv-sub">BATCH # ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rate" value="${esc(it.rate)}"></td><td class="r">${amt.toFixed(2)}</td></tr>`;});
+      rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">BATCH # ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rate" value="${esc(it.rate)}"></td><td class="r">${amt.toFixed(2)}</td></tr>`;});
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--orange);margin-bottom:8px;">${title}</div>
       <table class="inv"><thead><tr><th style="width:34px;">#</th><th>Description</th><th class="r" style="width:110px;">Qty (Kg)</th><th class="r" style="width:130px;">Rate (USD/Kg)</th><th class="r" style="width:120px;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="inv-totals"><div class="row grand"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div><div class="inv-words">${wordsUSD(sub)}</div></div>`;
@@ -1073,7 +1110,7 @@ function renderInvoice(){
     const cg=parseFloat(state.tax.cgst)||0, sg=parseFloat(state.tax.sgst)||0, ig=parseFloat(state.tax.igst)||0;
     let assess=0,rows='';
     state.items.forEach((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rateInr)||0,val=m.totNet*rate;assess+=val;const idm=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
-      rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(it.customs||it.customer)}</div></td><td class="r">${esc(it.hs)}</td><td>${esc(idm)}</td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rateInr" value="${esc(it.rateInr)}"></td><td class="r">${val.toFixed(2)}</td></tr>`;});
+      rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(customsLong(it))}</div></td><td class="r">${esc(it.hs)}</td><td>${esc(idm)}</td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rateInr" value="${esc(it.rateInr)}"></td><td class="r">${val.toFixed(2)}</td></tr>`;});
     const cgA=assess*cg/100, sgA=assess*sg/100, igA=assess*ig/100, total=assess+cgA+sgA+igA;
     const st=state.order.shipTransport||{}, ins=state.order.insurance||{};
     const shipHtml=`<div class="inv-section-head">Shipping &amp; Insurance Details</div>
@@ -1221,7 +1258,7 @@ function proformaPrint(){
   const rows=state.items.map((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rate)||0,amt=m.totNet*rate;sub+=amt;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');
     return `<tr>
       <td class="r" style="width:5%;">${i+1}</td>
-      <td style="width:44%;"><b>${esc(nameFor(it))}</b>${bb?`<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">Batch # ${esc(bb)}</span>`:''}<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}${it.hs?' · HS: '+esc(it.hs):''}</span></td>
+      <td style="width:44%;">${descPrint(it)}${bb?`<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">Batch # ${esc(bb)}</span>`:''}<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}${it.hs?' · HS: '+esc(it.hs):''}</span></td>
       <td class="r" style="width:13%;">${m.totNet.toFixed(3)}</td>
       <td class="r" style="width:17%;">${rate.toFixed(4)}</td>
       <td class="r" style="width:16%;">${amt.toFixed(2)}</td>
@@ -1248,7 +1285,7 @@ function packingPrint(){
   const rows=state.items.map((it,i)=>{const m=lineMetrics(it);totPkgs+=m.pkgs;totNet+=m.totNet;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
     return `<tr>
       <td class="r" style="width:5%;">${i+1}</td>
-      <td style="width:42%;"><b>${esc(nameFor(it))}</b>${bb?`<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">Batch/Lot # ${esc(bb)}</span>`:''}<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}${it.hs?' · HS: '+esc(it.hs):''}</span></td>
+      <td style="width:42%;">${descPrint(it)}${bb?`<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">Batch/Lot # ${esc(bb)}</span>`:''}<br><span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}${it.hs?' · HS: '+esc(it.hs):''}</span></td>
       <td class="r" style="width:10%;">${m.pkgs}</td>
       <td class="r" style="width:13%;">${perPkg.toFixed(3)}</td>
       <td class="r" style="width:13%;">${m.totNet.toFixed(3)}</td>
@@ -1308,7 +1345,7 @@ function gstPrint(){
     return `<tr>
       <td class="r" style="width:4%;">${i+1}</td>
       <td style="width:22%;">
-        <b>${esc(it.customs||it.customer)}</b><br>
+        <b>${esc(customsLong(it))}</b><br>
         <span style="font-size:7.5pt;color:#333;">Consignee: ${esc(consigneeInfo().name)}, ${esc(consigneeInfo().address)}</span><br>
         <span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}</span>
       </td>
@@ -1660,10 +1697,10 @@ function extractIdentity(text,fn){
   else { const all=[...text.matchAll(/\b(\d{2,7}-\d{2}-\d)\b/g)].map(x=>x[1]).filter(validCas); if(all.length)id.cas=all[0]; }
   if(m=text.match(/\bHS\s*(?:Code|No\.?)?\s*[:\-]?\s*(\d{6,8})/i)) id.hs=m[1];
   if(m=text.match(/(?:Product\s*(?:name|identifier)|Material\s*name|Trade\s*name|Chemical\s*name|Product)\s*[:\-]\s*([^\n]{3,90})/i))
-    id.name=m[1].trim().replace(/\s{2,}/g,' ').replace(/[;,]+$/,'');
-  // table layout with no colon: "Product Propoxyacetic acid  CAS ..."
-  if(!id.name && (m=text.match(/\bProduct\s+([A-Za-z][A-Za-z0-9()\-,'\s]{2,50}?)\s+CAS\b/i)))
-    id.name=m[1].replace(/\s+/g,' ').trim();
+    id.name=cleanChemName(m[1].replace(/[;,]+$/,''));
+  // table layout with no colon: "Product 2-Propoxyacetic acid  CAS ..." (keep leading locants like 2-)
+  if(!id.name && (m=text.match(/\bProduct\s+((?:\d+[-,]|[A-Za-z]-)*[A-Za-z][A-Za-z0-9()\-,'\s]{2,50}?)\s+CAS\b/i)))
+    id.name=cleanChemName(m[1]);
   const codes=Object.keys(CATALOG);
   for(const c of codes){ const esc=c.replace(/[-\/\\^$*+?.()|[\]{}]/g,'\\$&');
     if(new RegExp('(^|[^A-Za-z0-9])'+esc+'([^A-Za-z0-9]|$)').test(text) || new RegExp('(^|[^A-Za-z0-9])'+esc+'([^A-Za-z0-9]|$)','i').test(fn||'')){ id.code=c; break; } }
@@ -1749,11 +1786,7 @@ function parseCoa(text){
   if(!f.doa){ const d=(text||'').match(/Date of Analysis[^0-9A-Za-z]*([0-9]{1,2}[.\-\/][A-Za-z]{3,9}[.\-\/][0-9]{2,4})/i); if(d)f.doa=d[1]; }
   if(!f.cas){ const c=(text||'').match(/\b(\d{2,7}-\d{2}-\d)\b/); if(c && validCas(c[1]))f.cas=c[1]; }
   if(!f.name){ const nm=(text||'').match(/\b([A-Z][a-z]+(?:oxy|yl)?acetic acid)\b/) || (text||'').match(/\b([A-Z][a-z]{4,}(?:ic)?\s+acid)\b/); if(nm)f.name=nm[1].replace(/\s+/g,' ').trim(); }
-  // strip trailing molecular-structure labels (H3C, OH, O…) that sit next to the name
-  if(f.name){
-    if(/\bacid\b/i.test(f.name)) f.name=f.name.replace(/\b(acid)\b[\s\S]*$/i,'$1');
-    f.name=f.name.replace(/(?:\s+(?:H\s*3?\s*C|CH3|H3C|OH|[A-Z]{1,2}\d?|O|H))+$/,'').replace(/\s+/g,' ').trim();
-  }
+  f.name=cleanChemName(f.name);   // strip trailing structure labels (H3C, OH…)
   // build an ordered captured list of everything useful
   const cap=[];
   const push=(k,v)=>{ if(v && !cap.some(x=>x[0].toLowerCase()===k.toLowerCase())) cap.push([k,v]); };
@@ -1889,7 +1922,7 @@ document.getElementById('docFile').addEventListener('change',async function(e){
         if(c.mfg)rec.mfgDate=c.mfg;
         if(c.exp)rec.expDate=c.exp;
         if(c.qty)rec.qty=c.qty;
-        if(c.name && !rec.ident.name)rec.ident.name=c.name;
+        if(c.name)rec.ident.name=c.name;   // CoA's cleaned product name wins
         if(c.cas && !rec.ident.cas)rec.ident.cas=c.cas;
         // merge template-captured fields ahead of the generic ones
         const seen={}; const merged=[];
@@ -2074,14 +2107,15 @@ function dispatchPDF(idx){
     const haz=(it.hazards||[]).map(h=>`<li>${esc(h[0]||'')} — ${esc(h[1]||'')}</li>`).join('')||'<li style="color:#999;">none</li>';
     const prec=(it.precautions||[]).map(p=>`<li>${esc(p[0]||'')} — ${esc(p[1]||'')}</li>`).join('')||'<li style="color:#999;">none</li>';
     return `<div class="item-block">
-      <h3>Item ${n+1}: ${v(it.customer||it.customs||it.code)}</h3>
+      <h3>Item ${n+1}: ${v(it.customer||it.code)}</h3>
       <div class="grid">
-        ${field('Product code',v(it.code))}${field('Customer name',v(it.customer))}
-        ${field('Airline name',v(it.airline))}${field('CAS No.',v(it.cas))}
+        ${field('Product code',v(it.code))}${field('Material name (full)',v(it.customer))}
+        ${field('Material name (short)',v(it.matShort))}${field('Airline label',(v(it.code)+' / '+v(it.matShort||it.customer)))}
+        ${field('CAS No.',v(it.cas))}
         ${field('HS code',v(it.hs))}${field('GHS signal',v(it.signal))}
         ${field('Rate (USD/Kg)',v(it.rate))}${field('Rate (Rs/Kg)',v(it.rateInr))}
       </div>
-      ${it.customs?`<div class="fld wide"><span class="fk">Customs description</span><span class="fv">${esc(it.customs)}</span></div>`:''}
+      ${customsLong(it)?`<div class="fld wide"><span class="fk">Customs description (long)</span><span class="fv">${esc(customsLong(it))}</span></div>`:''}
       ${it.storage?`<div class="fld wide"><span class="fk">Storage</span><span class="fv">${esc(it.storage)}</span></div>`:''}
       ${it.transport?`<div class="fld wide"><span class="fk">Transport / DG</span><span class="fv">${esc(it.transport)}</span></div>`:''}
       <table class="bt"><thead><tr><th>Batch / Lot</th><th>Net weight</th><th>Bottle</th><th>Labels</th></tr></thead><tbody>${batchRows}</tbody></table>
