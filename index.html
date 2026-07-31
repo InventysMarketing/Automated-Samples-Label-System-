@@ -576,7 +576,7 @@
       <div class="grid4">
         <label class="f"><span class="lab">Port of origin</span><input class="in" data-path="order.portOfOrigin" value="Mumbai"></label>
         <label class="f"><span class="lab">Port of discharge</span><input class="in" data-path="order.portOfDischarge" value="" placeholder="e.g. Tokyo, Japan"></label>
-        <label class="f"><span class="lab">Sample type</span><select class="in" data-path="order.sampleType"><option value="gratis">Gratis</option><option value="paid">Paid</option></select></label>
+        <label class="f"><span class="lab">Sample type</span><select class="in" data-path="order.sampleType"><option value="gratis">Free of cost sample</option><option value="paid">Paid</option></select></label>
         <label class="f"><span class="lab">Place of supply</span><input class="in" data-path="order.placeOfSupply" value="Mumbai, Maharashtra"></label>
       </div>
       <div class="grid4" style="margin-top:12px;">
@@ -584,6 +584,7 @@
         <label class="f"><span class="lab">INR → USD rate</span><input class="in code" id="inrToUsd" value="" placeholder="auto"></label>
         <label class="f"><span class="lab">Transport mode</span><select class="in" data-path="order.shipTransport.mode"><option value="By Air">By Air</option><option value="By Sea">By Sea</option><option value="By Road">By Road</option><option value="By Courier">By Courier</option></select></label>
         <label class="f"><span class="lab">Carrier / Airline</span><input class="in" data-path="order.shipTransport.carrier" value=""></label>
+        <label class="f"><span class="lab">Delivery period</span><input class="in" data-path="order.shipTransport.deliveryPeriod" value="" placeholder="e.g. 7–10 days"></label>
       </div>
       <div class="grid4" style="margin-top:12px;">
         <label class="f"><span class="lab">AWB / LR no.</span><input class="in code" data-path="order.shipTransport.awb" value=""></label>
@@ -755,7 +756,7 @@ function blankState(){return {
     portOfOrigin:'Mumbai',portOfDischarge:'',
     portOfLoading:'Mumbai Airport, India',paymentTerms:'',
     prepTime:'04:00 PM',removalDate:'',removalTime:'10:00 PM',
-    shipTransport:{mode:'By Air',carrier:'',awb:'',awbDate:''},
+    shipTransport:{mode:'By Air',carrier:'',awb:'',awbDate:'',deliveryPeriod:''},
     insurance:{company:'',policy:'',amount:''}},
   tax:{cgst:'0',sgst:'0',igst:'18'},
   items:[], files:[],
@@ -867,7 +868,14 @@ function outerBody(it,b,po,u){
       <div class="lab-sec" style="font-size:${u(2.5)};color:#1b4e8a;margin-bottom:${u(.3)};">TRANSPORT / DG CLASSIFICATION</div>
       <div style="font-family:var(--label-mono);font-size:${u(2.0)};color:#1b4e8a;font-weight:600;line-height:1.35;word-break:break-word;white-space:pre-wrap;overflow-wrap:break-word;">${esc(it.transport)}</div>
     </div>`:''}
-    <div style="font-family:var(--label-mono);font-size:${u(1.75)};color:#bbb;margin-top:${u(.8)};">SDS on file · Inventys Research Company Pvt Ltd · GSTIN 27AABCI4415K1ZL</div>
+    <div style="margin-top:${u(.9)};">
+      <div class="lab-div"></div>
+      <div style="text-align:center;font-family:var(--label-sans);color:#444;line-height:1.35;margin-top:${u(.7)};">
+        <div style="font-weight:700;color:#222;font-size:${u(2.1)};">Inventys Research Company Pvt Ltd</div>
+        <div style="font-size:${u(1.85)};">901C Tower 2, One International Centre, Senapati Bapat Marg, Prabhadevi, Mumbai 400013. INDIA.</div>
+        <div style="font-size:${u(1.85)};">Phone: +91.22.71.400.200 &nbsp;·&nbsp; eMail: enq@InventyS.IN</div>
+      </div>
+    </div>
   </div>`;
 }
 /* auto-fit: measure content at scale 1 then scale font to fill the real label height */
@@ -1223,14 +1231,21 @@ function docParties(){
   </table>`;}
 function docMeta(){
   const o=state.order, st=o.shipTransport||{};
+  const payment = o.paymentTerms || (o.sampleType==='paid' ? 'As per agreed terms' : 'Free of cost sample. For R & D purpose only');
+  const delivery = st.mode ? (/Door Delivery/i.test(st.mode)?st.mode:st.mode+' (Door Delivery)') : 'By Air (Door Delivery)';
+  const transportation = (st.carrier?esc(st.carrier)+(st.mode?' — '+esc(st.mode):''):esc(st.mode||'By Air'))+(st.awb?' · AWB '+esc(st.awb):'');
+  const incoterms = 'CIF'+(o.portOfDischarge?' '+esc(o.portOfDischarge):'')+' (Cost, Insurance & Freight)';
+  const remarks = o.placeOfSupply ? 'Place of Supply: '+esc(o.placeOfSupply) : '-';
+  const row=(k,v)=>`<tr>
+      <td style="width:120px;padding:3px 7px;border-right:1px solid #666;border-bottom:1px solid #666;font-weight:700;vertical-align:top;">${k}</td>
+      <td style="padding:3px 7px;border-bottom:1px solid #666;vertical-align:top;">${v}</td></tr>`;
   return `<table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;">
-    <tr><td style="padding:4px 7px;line-height:1.6;">
-      <b>Payment:</b> ${esc(o.paymentTerms||(o.sampleType==='paid'?'As per agreed terms':'Free of cost sample — For R&D purpose, not for sale'))} &nbsp;·&nbsp;
-      <b>Delivery:</b> ${esc(st.mode||'By Air (Door Delivery)')} &nbsp;·&nbsp;
-      <b>Incoterms:</b> CIF${o.portOfDischarge?' '+esc(o.portOfDischarge):''} (Cost, Insurance &amp; Freight) &nbsp;·&nbsp;
-      <b>Transportation:</b> ${esc(st.carrier||st.mode||'By Air')}${st.awb?' · AWB '+esc(st.awb):''} &nbsp;·&nbsp;
-      <b>Remarks:</b> ${esc(o.placeOfSupply?('Place of Supply: '+o.placeOfSupply):'—')}
-    </td></tr>
+    ${row('Payment', esc(payment))}
+    ${row('Delivery', esc(delivery))}
+    ${row('Delivery Period', esc(st.deliveryPeriod||'-'))}
+    ${row('Incoterms', incoterms)}
+    ${row('Transportation', transportation)}
+    ${row('Remarks', remarks)}
   </table>`;}
 const BANK_TERMS=`
   <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;">
