@@ -112,9 +112,9 @@
   .lab-co{font-family:var(--label-sans);font-weight:700;color:#111;line-height:1.05;}
   .lab-logo{object-fit:contain;display:block;flex:none;}
   .lab-div{border-bottom:1px solid #d2d2d2;}
-  .lab-name{font-family:var(--label-sans);font-weight:700;color:var(--azure);line-height:1.07;}
+  .lab-name{font-family:var(--label-sans);font-weight:700;color:var(--azure);line-height:1.07;text-align:center;}
   .lab-row{font-family:var(--label-sans);display:flex;gap:5px;align-items:baseline;line-height:1.2;}
-  .lab-k{color:#555;font-weight:600;}
+  .lab-k{color:var(--azure);font-weight:600;}
   .lab-v{font-family:var(--label-mono);color:#0d0d0d;}
   .lab-sec{font-family:var(--label-sans);font-weight:700;color:#333;letter-spacing:.02em;}
   .lab-haz-row{font-family:var(--label-sans);display:flex;gap:6px;line-height:1.22;}
@@ -807,7 +807,7 @@ function innerBody(it,b,tier,u){
       <div class="lab-div"></div>
       <div class="lab-name" style="font-size:${f3};margin-top:${u(.15)};line-height:1.1;">${esc(innerNameOf(it))||'&nbsp;'}</div>
       <div class="lab-row" style="font-size:${f1};flex-wrap:wrap;gap:${u(.5)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
-      <div class="lab-row" style="font-size:${f1};gap:${u(.8)};"><span class="lab-k">LOT</span><span class="lab-v">${esc(b.batch)}</span><span class="lab-k">WT</span><span class="lab-v">${esc(b.qty)}&thinsp;${esc(it.unit)}</span></div>
+      <div class="lab-row" style="font-size:${f1};gap:${u(.8)};"><span class="lab-k">LOT</span><span class="lab-v">${esc(b.batch)}</span></div>
       <div class="lab-row" style="font-size:${f1};"><span class="lab-k">ORIGIN</span><span class="lab-origin" style="font-size:${f1};">MADE IN INDIA</span></div>
     </div>`;
   }
@@ -824,10 +824,8 @@ function innerBody(it,b,tier,u){
     <div style="display:flex;flex-direction:column;gap:${u(gap*1.1)};">
       <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k" style="margin-left:auto;">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
       <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">LOT NO</span><span class="lab-v">${esc(b.batch)}</span></div>
-      <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">NET WEIGHT</span><span class="lab-v">${esc(b.qty)} ${esc(it.unit)}</span></div>
       <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">ORIGIN</span><span class="lab-origin">MADE IN INDIA</span></div>
     </div>
-    <div class="barcode" style="height:${u(lg?6:3.4)};margin-top:${u(gap)};"></div>
   </div>`;
 }
 /* ---- outer label (base sizes; scaled by auto-fit) ---- */
@@ -841,7 +839,7 @@ function outerBody(it,b,po,u){
     <div class="lab-hd">${logoImg(6.5,u)}<div style="text-align:right;"><div class="lab-co" style="font-size:${u(2.5)};">Inventys Research Company Pvt Ltd</div><div style="font-size:${u(2.0)};color:#666;font-family:var(--label-sans);">MADE IN INDIA</div></div></div>
     <div class="lab-div"></div>
     <div class="lab-name" style="font-size:${u(3.9)};margin-top:${u(.2)};">${esc(outerNameOf(it))||'&nbsp;'}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:${u(1.2)} ${u(4.5)};">
+    <div style="display:flex;flex-direction:column;gap:${u(1.0)};">
       ${field('LOT',esc(b.batch))}
       ${field('NET WT',netWt)}
       ${field('CAS#',esc(it.cas))}
@@ -850,10 +848,10 @@ function outerBody(it,b,po,u){
       ${it.signal?`<div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">GHS SIGNAL</span><span class="lab-v" style="color:${signalColor};font-weight:700;">${esc(it.signal).toUpperCase()}</span></div>`:''}
     </div>
     <div class="lab-div"></div>
-    ${it.hazards.length?`<div class="lab-sec" style="font-size:${u(2.5)};color:#c2410c;margin-bottom:${u(.35)};">⚠ HAZARD STATEMENTS</div>
+    ${it.hazards.length?`<div class="lab-sec" style="font-size:${u(2.5)};color:#333;margin-bottom:${u(.35)};">HAZARD STATEMENTS</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:${u(2.25)};line-height:1.25;">
     ${it.hazards.map(h=>`<tr>
-      <td style="width:19ch;vertical-align:top;font-family:var(--label-mono);color:#c2410c;font-weight:600;word-break:break-all;padding:0 ${u(1.5)} ${u(.35)} 0;">${esc(h[0])||''}</td>
+      <td style="width:19ch;vertical-align:top;font-family:var(--label-mono);color:#333;font-weight:600;word-break:break-all;padding:0 ${u(1.5)} ${u(.35)} 0;">${esc(h[0])||''}</td>
       <td style="vertical-align:top;padding:0 0 ${u(.35)} 0;">${esc(h[1])}</td>
     </tr>`).join('')}</table><div style="height:${u(.5)};"></div>`:''}
     ${it.precautions.length?`<div class="lab-sec" style="font-size:${u(2.5)};margin-bottom:${u(.35)};">PRECAUTIONARY STATEMENTS</div>
