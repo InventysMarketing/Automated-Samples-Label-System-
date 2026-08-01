@@ -112,9 +112,9 @@
   .lab-co{font-family:var(--label-sans);font-weight:700;color:#111;line-height:1.05;}
   .lab-logo{object-fit:contain;display:block;flex:none;}
   .lab-div{border-bottom:1px solid #d2d2d2;}
-  .lab-name{font-family:var(--label-sans);font-weight:700;color:var(--azure);line-height:1.07;}
+  .lab-name{font-family:var(--label-sans);font-weight:700;color:var(--azure);line-height:1.07;text-align:center;}
   .lab-row{font-family:var(--label-sans);display:flex;gap:5px;align-items:baseline;line-height:1.2;}
-  .lab-k{color:#555;font-weight:600;}
+  .lab-k{color:var(--azure);font-weight:600;}
   .lab-v{font-family:var(--label-mono);color:#0d0d0d;}
   .lab-sec{font-family:var(--label-sans);font-weight:700;color:#333;letter-spacing:.02em;}
   .lab-haz-row{font-family:var(--label-sans);display:flex;gap:6px;line-height:1.22;}
@@ -576,7 +576,7 @@
       <div class="grid4">
         <label class="f"><span class="lab">Port of origin</span><input class="in" data-path="order.portOfOrigin" value="Mumbai"></label>
         <label class="f"><span class="lab">Port of discharge</span><input class="in" data-path="order.portOfDischarge" value="" placeholder="e.g. Tokyo, Japan"></label>
-        <label class="f"><span class="lab">Sample type</span><select class="in" data-path="order.sampleType"><option value="gratis">Gratis</option><option value="paid">Paid</option></select></label>
+        <label class="f"><span class="lab">Sample type</span><select class="in" data-path="order.sampleType"><option value="gratis">Free of cost sample</option><option value="paid">Paid</option></select></label>
         <label class="f"><span class="lab">Place of supply</span><input class="in" data-path="order.placeOfSupply" value="Mumbai, Maharashtra"></label>
       </div>
       <div class="grid4" style="margin-top:12px;">
@@ -584,6 +584,7 @@
         <label class="f"><span class="lab">INR → USD rate</span><input class="in code" id="inrToUsd" value="" placeholder="auto"></label>
         <label class="f"><span class="lab">Transport mode</span><select class="in" data-path="order.shipTransport.mode"><option value="By Air">By Air</option><option value="By Sea">By Sea</option><option value="By Road">By Road</option><option value="By Courier">By Courier</option></select></label>
         <label class="f"><span class="lab">Carrier / Airline</span><input class="in" data-path="order.shipTransport.carrier" value=""></label>
+        <label class="f"><span class="lab">Delivery period</span><input class="in" data-path="order.shipTransport.deliveryPeriod" value="" placeholder="e.g. 7–10 days"></label>
       </div>
       <div class="grid4" style="margin-top:12px;">
         <label class="f"><span class="lab">AWB / LR no.</span><input class="in code" data-path="order.shipTransport.awb" value=""></label>
@@ -755,7 +756,7 @@ function blankState(){return {
     portOfOrigin:'Mumbai',portOfDischarge:'',
     portOfLoading:'Mumbai Airport, India',paymentTerms:'',
     prepTime:'04:00 PM',removalDate:'',removalTime:'10:00 PM',
-    shipTransport:{mode:'By Air',carrier:'',awb:'',awbDate:''},
+    shipTransport:{mode:'By Air',carrier:'',awb:'',awbDate:'',deliveryPeriod:''},
     insurance:{company:'',policy:'',amount:''}},
   tax:{cgst:'0',sgst:'0',igst:'18'},
   items:[], files:[],
@@ -806,7 +807,7 @@ function innerBody(it,b,tier,u){
       <div class="lab-div"></div>
       <div class="lab-name" style="font-size:${f3};margin-top:${u(.15)};line-height:1.1;">${esc(innerNameOf(it))||'&nbsp;'}</div>
       <div class="lab-row" style="font-size:${f1};flex-wrap:wrap;gap:${u(.5)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
-      <div class="lab-row" style="font-size:${f1};gap:${u(.8)};"><span class="lab-k">LOT</span><span class="lab-v">${esc(b.batch)}</span><span class="lab-k">WT</span><span class="lab-v">${esc(b.qty)}&thinsp;${esc(it.unit)}</span></div>
+      <div class="lab-row" style="font-size:${f1};gap:${u(.8)};"><span class="lab-k">LOT</span><span class="lab-v">${esc(b.batch)}</span></div>
       <div class="lab-row" style="font-size:${f1};"><span class="lab-k">ORIGIN</span><span class="lab-origin" style="font-size:${f1};">MADE IN INDIA</span></div>
     </div>`;
   }
@@ -823,10 +824,8 @@ function innerBody(it,b,tier,u){
     <div style="display:flex;flex-direction:column;gap:${u(gap*1.1)};">
       <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k" style="margin-left:auto;">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
       <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">LOT NO</span><span class="lab-v">${esc(b.batch)}</span></div>
-      <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">NET WEIGHT</span><span class="lab-v">${esc(b.qty)} ${esc(it.unit)}</span></div>
       <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">ORIGIN</span><span class="lab-origin">MADE IN INDIA</span></div>
     </div>
-    <div class="barcode" style="height:${u(lg?6:3.4)};margin-top:${u(gap)};"></div>
   </div>`;
 }
 /* ---- outer label (base sizes; scaled by auto-fit) ---- */
@@ -840,7 +839,7 @@ function outerBody(it,b,po,u){
     <div class="lab-hd">${logoImg(6.5,u)}<div style="text-align:right;"><div class="lab-co" style="font-size:${u(2.5)};">Inventys Research Company Pvt Ltd</div><div style="font-size:${u(2.0)};color:#666;font-family:var(--label-sans);">MADE IN INDIA</div></div></div>
     <div class="lab-div"></div>
     <div class="lab-name" style="font-size:${u(3.9)};margin-top:${u(.2)};">${esc(outerNameOf(it))||'&nbsp;'}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:${u(1.2)} ${u(4.5)};">
+    <div style="display:flex;flex-direction:column;gap:${u(1.0)};">
       ${field('LOT',esc(b.batch))}
       ${field('NET WT',netWt)}
       ${field('CAS#',esc(it.cas))}
@@ -849,10 +848,10 @@ function outerBody(it,b,po,u){
       ${it.signal?`<div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">GHS SIGNAL</span><span class="lab-v" style="color:${signalColor};font-weight:700;">${esc(it.signal).toUpperCase()}</span></div>`:''}
     </div>
     <div class="lab-div"></div>
-    ${it.hazards.length?`<div class="lab-sec" style="font-size:${u(2.5)};color:#c2410c;margin-bottom:${u(.35)};">⚠ HAZARD STATEMENTS</div>
+    ${it.hazards.length?`<div class="lab-sec" style="font-size:${u(2.5)};color:#333;margin-bottom:${u(.35)};">HAZARD STATEMENTS</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:${u(2.25)};line-height:1.25;">
     ${it.hazards.map(h=>`<tr>
-      <td style="width:19ch;vertical-align:top;font-family:var(--label-mono);color:#c2410c;font-weight:600;word-break:break-all;padding:0 ${u(1.5)} ${u(.35)} 0;">${esc(h[0])||''}</td>
+      <td style="width:19ch;vertical-align:top;font-family:var(--label-mono);color:#333;font-weight:600;word-break:break-all;padding:0 ${u(1.5)} ${u(.35)} 0;">${esc(h[0])||''}</td>
       <td style="vertical-align:top;padding:0 0 ${u(.35)} 0;">${esc(h[1])}</td>
     </tr>`).join('')}</table><div style="height:${u(.5)};"></div>`:''}
     ${it.precautions.length?`<div class="lab-sec" style="font-size:${u(2.5)};margin-bottom:${u(.35)};">PRECAUTIONARY STATEMENTS</div>
@@ -867,7 +866,14 @@ function outerBody(it,b,po,u){
       <div class="lab-sec" style="font-size:${u(2.5)};color:#1b4e8a;margin-bottom:${u(.3)};">TRANSPORT / DG CLASSIFICATION</div>
       <div style="font-family:var(--label-mono);font-size:${u(2.0)};color:#1b4e8a;font-weight:600;line-height:1.35;word-break:break-word;white-space:pre-wrap;overflow-wrap:break-word;">${esc(it.transport)}</div>
     </div>`:''}
-    <div style="font-family:var(--label-mono);font-size:${u(1.75)};color:#bbb;margin-top:${u(.8)};">SDS on file · Inventys Research Company Pvt Ltd · GSTIN 27AABCI4415K1ZL</div>
+    <div style="margin-top:${u(.9)};">
+      <div class="lab-div"></div>
+      <div style="text-align:center;font-family:var(--label-sans);color:#444;line-height:1.35;margin-top:${u(.7)};">
+        <div style="font-weight:700;color:#222;font-size:${u(2.1)};">Inventys Research Company Pvt Ltd</div>
+        <div style="font-size:${u(1.85)};">901C Tower 2, One International Centre, Senapati Bapat Marg, Prabhadevi, Mumbai 400013. INDIA.</div>
+        <div style="font-size:${u(1.85)};">Phone: +91.22.71.400.200 &nbsp;·&nbsp; eMail: enq@InventyS.IN</div>
+      </div>
+    </div>
   </div>`;
 }
 /* auto-fit: measure content at scale 1 then scale font to fill the real label height */
@@ -1223,14 +1229,21 @@ function docParties(){
   </table>`;}
 function docMeta(){
   const o=state.order, st=o.shipTransport||{};
+  const payment = o.paymentTerms || (o.sampleType==='paid' ? 'As per agreed terms' : 'Free of cost sample. For R & D purpose only');
+  const delivery = st.mode ? (/Door Delivery/i.test(st.mode)?st.mode:st.mode+' (Door Delivery)') : 'By Air (Door Delivery)';
+  const transportation = (st.carrier?esc(st.carrier)+(st.mode?' — '+esc(st.mode):''):esc(st.mode||'By Air'))+(st.awb?' · AWB '+esc(st.awb):'');
+  const incoterms = 'CIF'+(o.portOfDischarge?' '+esc(o.portOfDischarge):'')+' (Cost, Insurance & Freight)';
+  const remarks = o.placeOfSupply ? 'Place of Supply: '+esc(o.placeOfSupply) : '-';
+  const row=(k,v)=>`<tr>
+      <td style="width:120px;padding:3px 7px;border-right:1px solid #666;border-bottom:1px solid #666;font-weight:700;vertical-align:top;">${k}</td>
+      <td style="padding:3px 7px;border-bottom:1px solid #666;vertical-align:top;">${v}</td></tr>`;
   return `<table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;">
-    <tr><td style="padding:4px 7px;line-height:1.6;">
-      <b>Payment:</b> ${esc(o.paymentTerms||(o.sampleType==='paid'?'As per agreed terms':'Free of cost sample — For R&D purpose, not for sale'))} &nbsp;·&nbsp;
-      <b>Delivery:</b> ${esc(st.mode||'By Air (Door Delivery)')} &nbsp;·&nbsp;
-      <b>Incoterms:</b> CIF${o.portOfDischarge?' '+esc(o.portOfDischarge):''} (Cost, Insurance &amp; Freight) &nbsp;·&nbsp;
-      <b>Transportation:</b> ${esc(st.carrier||st.mode||'By Air')}${st.awb?' · AWB '+esc(st.awb):''} &nbsp;·&nbsp;
-      <b>Remarks:</b> ${esc(o.placeOfSupply?('Place of Supply: '+o.placeOfSupply):'—')}
-    </td></tr>
+    ${row('Payment', esc(payment))}
+    ${row('Delivery', esc(delivery))}
+    ${row('Delivery Period', esc(st.deliveryPeriod||'-'))}
+    ${row('Incoterms', incoterms)}
+    ${row('Transportation', transportation)}
+    ${row('Remarks', remarks)}
   </table>`;}
 const BANK_TERMS=`
   <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;">
