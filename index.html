@@ -626,11 +626,6 @@
       <div class="stage" id="outerStage"></div>
       <p style="font-size:11px;color:var(--slate);margin:4px 0 0;text-align:center;">Click label to zoom · Print button prints all copies</p>
       <label class="f" style="margin-top:8px;display:block;"><span class="lab" style="display:block;">✎ Name on this outer label <span class="mono">(overrides the product name — used only on the outer label)</span></span><input class="in" id="outerNameInput" placeholder="defaults to product / customer name"></label>
-      <label class="f" style="margin-top:8px;display:block;"><span class="lab" style="display:block;">✎ Net weight on this outer label <span class="mono">(overrides the batch net weight — used only on the outer label)</span></span>
-        <span style="display:flex;gap:6px;">
-          <input class="in code" id="outerWtNum" style="flex:1;" placeholder="defaults to batch net wt" inputmode="decimal">
-          <select class="in" id="outerWtUnit" style="width:auto;"><option value="Kg">Kg</option><option value="g">g</option></select>
-        </span></label>
       <div class="pv-actions">
         <button class="btn print tiny" data-action="print" data-kind="outer">🖶 Print / Save outer labels (packed A4)</button>
         <span class="estimate" id="outerEst"></span>
@@ -1019,7 +1014,11 @@ function renderForm(){
               <label class="f"><span class="lab">Mfg date <span class="mono">(CoA)</span></span><input class="in code" data-path="items.${i}.batches.${bi}.mfgDate" value="${esc(b.mfgDate||'')}" placeholder="—"></label>
               <label class="f"><span class="lab">Exp / retest <span class="mono">(CoA)</span></span><input class="in code" data-path="items.${i}.batches.${bi}.expDate" value="${esc(b.expDate||'')}" placeholder="—"></label>
               <label class="f"><span class="lab">CoA lot size <span class="mono">(ref)</span></span><input class="in code" data-path="items.${i}.batches.${bi}.lotSize" value="${esc(b.lotSize||'')}" placeholder="—"></label>
-              <div></div>
+              <label class="f"><span class="lab">Outer label net wt <span class="mono">(override)</span></span>
+                <span style="display:flex;gap:6px;">
+                  <input class="in code" style="flex:1;" data-path="items.${i}.batches.${bi}.outerWtNum" value="${esc(b.outerWtNum||'')}" placeholder="defaults to net wt" inputmode="decimal">
+                  <select class="in" style="width:auto;" data-path="items.${i}.batches.${bi}.outerWtUnit"><option value="Kg" ${(b.outerWtUnit||'Kg')==='Kg'?'selected':''}>Kg</option><option value="g" ${b.outerWtUnit==='g'?'selected':''}>g</option></select>
+                </span></label>
             </div>
             ${capturedPanel(b.captured,'Captured from this CoA')}
           </div>`).join('')}
@@ -1034,9 +1033,6 @@ function syncLabelNameInputs(){
   const ii=document.getElementById('innerNameInput'), oi=document.getElementById('outerNameInput');
   if(ii&&document.activeElement!==ii) ii.value=(it&&it.innerName)||'';
   if(oi&&document.activeElement!==oi) oi.value=(it&&it.outerName)||'';
-  const wn=document.getElementById('outerWtNum'), wu=document.getElementById('outerWtUnit');
-  if(wn&&document.activeElement!==wn) wn.value=(b&&b.outerWtNum)||'';
-  if(wu&&document.activeElement!==wu) wu.value=(b&&b.outerWtUnit)||'Kg';
 }
 function renderInner(){
   syncLabelNameInputs();
@@ -2150,9 +2146,6 @@ document.getElementById('syncInrBtn').addEventListener('click',async function(){
   const ii=document.getElementById('innerNameInput'), oi=document.getElementById('outerNameInput');
   if(ii) ii.addEventListener('input',function(){const it=state.items[preview.i];if(!it)return;it.innerName=this.value;renderInner();});
   if(oi) oi.addEventListener('input',function(){const it=state.items[preview.i];if(!it)return;it.outerName=this.value;renderOuter();});
-  const wn=document.getElementById('outerWtNum'), wu=document.getElementById('outerWtUnit');
-  if(wn) wn.addEventListener('input',function(){const it=state.items[preview.i],b=it&&it.batches[preview.b];if(!b)return;b.outerWtNum=this.value;if(!b.outerWtUnit)b.outerWtUnit='Kg';renderOuter();autosave();});
-  if(wu) wu.addEventListener('change',function(){const it=state.items[preview.i],b=it&&it.batches[preview.b];if(!b)return;b.outerWtUnit=this.value;renderOuter();autosave();});
 })();
 /* consignee "same as buyer" toggle */
 (function(){
