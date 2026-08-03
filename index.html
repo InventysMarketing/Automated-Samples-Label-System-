@@ -743,7 +743,8 @@ function customsName(code){const c=CATALOG[code];return c?(CPRE+(code+' '+c.cust
 function cleanChemName(s){s=(s||'').replace(/\s+/g,' ').trim();if(/\bacid\b/i.test(s))s=s.replace(/\b(acid)\b[\s\S]*$/i,'$1');s=s.replace(/(?:\s+(?:H3C|CH3|H\s*3\s*C|C\s*H\s*3|OH|HO|O|H))+$/,'').trim();return s;}
 function fill(item,code){const c=CATALOG[code];if(!c)return;item.code=code;item.customer=c.customer;item.airline=c.airline;item.cas=c.cas;item.hs=c.hs;item.signal=c.signal;item.hazards=c.hazards.map(x=>x.slice());item.precautions=c.precautions.map(x=>x.slice());item.storage=c.storage;item.transport=c.transport;}
 function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1',mfgDate:'',expDate:'',lotSize:'',captured:[]};}
-function blankItem(){return {code:'',customer:'',matShort:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
+function blankItem(){return {code:'',customer:'',matShort:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',stab:blankStab(),unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
+function blankStab(){return {reactivity:'No data available',chemStability:'Stable under recommended storage conditions',hazReactions:'No data available',conditionsAvoid:'No data available',incompatible:'No data available',decomposition:'Carbon monoxide, carbon dioxide'};}
 function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rateInr=rateInr;it.batches=batches;fill(it,code);return it;}
 /* Everything starts blank; a saved document (localStorage) is restored on login.
    A few Inventys-constant defaults are kept so calculations don't break. */
@@ -815,16 +816,16 @@ function innerBody(it,b,tier,u){
      (fitScaleInner) so the content fills the whole label with readable type,
      no matter the bottle dimensions. Packed top-to-bottom (no space-between). */
   const padmm=lg?1.8:1.4, gap=lg?1.0:0.8;
-  const fName=lg?3.6:3.2, fRow=lg?2.9:2.7, fCo=lg?3.0:2.8, logoH=lg?8:7;
+  const fName=lg?3.6:3.2, fRow=lg?2.9:2.7, fCo=lg?2.6:2.5, logoH=lg?8:7;
   return `<div class="lab-pad flow" style="padding:${u(padmm)};display:flex;flex-direction:column;gap:${u(gap)};">
-    <div class="lab-hd"><div class="lab-co" style="font-size:${u(fCo)};max-width:66%;">Inventys Research Company Pvt Ltd</div>${logoImg(logoH,u)}</div>
+    <div class="lab-hd"><div class="lab-co" style="font-size:${u(fCo)};max-width:72%;white-space:nowrap;">Inventys Research Company Pvt Ltd</div>${logoImg(logoH,u)}</div>
     <div class="lab-div"></div>
     <div class="lab-name" style="font-size:${u(fName)};">${esc(innerNameOf(it))||'&nbsp;'}</div>
     <div class="lab-div"></div>
     <div style="display:flex;flex-direction:column;gap:${u(gap*0.9)};">
       <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">CAS#</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k" style="margin-left:auto;">HS</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
       <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">LOT NO</span><span class="lab-v">${esc(b.batch)}</span></div>
-      <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">ORIGIN</span><span class="lab-origin">MADE IN INDIA</span></div>
+      <div class="lab-row" style="font-size:${u(fRow)};"><span class="lab-k">COUNTRY OF ORIGIN</span><span class="lab-origin">MADE IN INDIA</span></div>
     </div>
   </div>`;
 }
@@ -860,10 +861,17 @@ function outerBody(it,b,po,u){
       <td style="width:19ch;vertical-align:top;font-family:var(--label-mono);color:#555;font-weight:600;word-break:break-all;padding:0 ${u(1.5)} ${u(.35)} 0;">${esc(p[0])||''}</td>
       <td style="vertical-align:top;padding:0 0 ${u(.35)} 0;">${esc(p[1])}</td>
     </tr>`).join('')}</table><div style="height:${u(.5)};"></div>`:''}
+    ${(()=>{const s=it.stab||{};const rows=[['Reactivity',s.reactivity],['Chemical Stability',s.chemStability],['Possibility of Hazardous Reactions',s.hazReactions],['Conditions to Avoid',s.conditionsAvoid],['Incompatible Materials',s.incompatible],['Hazardous Decomposition Products',s.decomposition]].filter(r=>r[1]&&String(r[1]).trim());
+      return rows.length?`<div class="lab-sec" style="font-size:${u(2.5)};margin-bottom:${u(.35)};">STABILITY AND REACTIVITY</div>
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:${u(2.25)};line-height:1.25;">
+      ${rows.map(r=>`<tr>
+        <td style="width:46%;vertical-align:top;font-family:var(--label-sans);color:#333;font-weight:600;padding:0 ${u(1.5)} ${u(.35)} 0;">${esc(r[0])}</td>
+        <td style="vertical-align:top;font-family:var(--label-sans);color:#333;padding:0 0 ${u(.35)} 0;">${esc(r[1])}</td>
+      </tr>`).join('')}</table><div style="height:${u(.5)};"></div>`:'';})()}
     ${it.storage?`<div class="lab-sec" style="font-size:${u(2.5)};margin-bottom:${u(.25)};">STORAGE</div>
     <div style="font-family:var(--label-sans);font-size:${u(2.25)};color:#333;line-height:1.3;">${esc(it.storage)}</div><div style="height:${u(.5)};"></div>`:''}
     ${it.transport?`<div style="background:#f0f5ff;border:${u(.5)} solid #b8d0f0;border-radius:${u(1)};padding:${u(1.5)} ${u(2)};margin-top:${u(.3)};">
-      <div class="lab-sec" style="font-size:${u(2.5)};color:#1b4e8a;margin-bottom:${u(.3)};">TRANSPORT / DG CLASSIFICATION</div>
+      <div class="lab-sec" style="font-size:${u(2.5)};color:#1b4e8a;margin-bottom:${u(.3)};">TRANSPORTATION INFORMATION</div>
       <div style="font-family:var(--label-mono);font-size:${u(2.0)};color:#1b4e8a;font-weight:600;line-height:1.35;word-break:break-word;white-space:pre-wrap;overflow-wrap:break-word;">${esc(it.transport)}</div>
     </div>`:''}
     <div style="margin-top:${u(.9)};">
@@ -896,14 +904,23 @@ function fitScale(it,b){
 function fitScaleInner(it,b){
   const bo=bottle(b.bottleId);
   if(bo.tier==='small') return 1;
+  const lg=bo.tier==='large';
+  const logoHmm=lg?8:7, padmm=lg?1.8:1.4;
+  const mm2px=PXCM/10;
   const probe=document.createElement('div');
   probe.style.cssText=`position:fixed;left:-99999px;top:0;width:${bo.w}cm;visibility:hidden;pointer-events:none;`;
-  probe.innerHTML=innerBody(it,b,bo.tier,UP).replace(/<img[^>]*>/g,`<div style="height:${UP(7)};"></div>`);
+  probe.innerHTML=innerBody(it,b,bo.tier,UP);
   document.body.appendChild(probe);
   const contentPx=probe.scrollHeight||probe.offsetHeight||1;
+  const nameEl=probe.querySelector('.lab-co');
+  const nameWpx=nameEl?nameEl.scrollWidth:1;
   document.body.removeChild(probe);
-  const targetPx=bo.h*PXCM*0.97;
-  return Math.max(0.6, Math.min(2.4, targetPx/contentPx));
+  /* fit by height, but also cap so the header (company name + logo) never
+     overflows the label width — the auto-fit scale multiplies both. */
+  const headerWpx=nameWpx + (2/*gap*/ + logoHmm*LOGO_AR + padmm*2)*mm2px;
+  const heightScale=bo.h*PXCM*0.97/contentPx;
+  const widthScale =bo.w*PXCM*0.97/headerWpx;
+  return Math.max(0.6, Math.min(2.4, Math.min(heightScale,widthScale)));
 }
 
 const itemsEl=document.getElementById('items');
@@ -929,6 +946,7 @@ function capturedPanel(cap,title){
 }
 function renderForm(){
   const codes=Object.keys(CATALOG);
+  state.items.forEach(it=>{if(!it.stab)it.stab=blankStab();});
   itemsEl.innerHTML=state.items.map((it,i)=>`
     <div class="item">
       <div class="item-head"><span class="chip-n">ITEM ${String(i+1).padStart(2,'0')}</span><span class="grow"></span>
@@ -958,7 +976,16 @@ function renderForm(){
         ${stmtRows(it,i,'precautions')}
         <div class="grid2" style="margin-top:12px;">
           <label class="f"><span class="lab">Storage conditions</span><textarea class="in" data-path="items.${i}.storage">${esc(it.storage)}</textarea></label>
-          <label class="f"><span class="lab">Transport</span><textarea class="in" data-path="items.${i}.transport">${esc(it.transport)}</textarea></label>
+          <label class="f"><span class="lab">Transport / DG (Transportation Information)</span><textarea class="in" data-path="items.${i}.transport">${esc(it.transport)}</textarea></label>
+        </div>
+        <div class="sub-h" style="margin-top:14px;"><span class="t">Stability &amp; Reactivity</span><span class="cnt">shown on the outer label</span></div>
+        <div class="grid2" style="margin-top:8px;">
+          <label class="f"><span class="lab">Reactivity</span><input class="in" data-path="items.${i}.stab.reactivity" value="${esc(it.stab.reactivity)}"></label>
+          <label class="f"><span class="lab">Chemical stability</span><input class="in" data-path="items.${i}.stab.chemStability" value="${esc(it.stab.chemStability)}"></label>
+          <label class="f"><span class="lab">Possibility of hazardous reactions</span><input class="in" data-path="items.${i}.stab.hazReactions" value="${esc(it.stab.hazReactions)}"></label>
+          <label class="f"><span class="lab">Conditions to avoid</span><input class="in" data-path="items.${i}.stab.conditionsAvoid" value="${esc(it.stab.conditionsAvoid)}"></label>
+          <label class="f"><span class="lab">Incompatible materials</span><input class="in" data-path="items.${i}.stab.incompatible" value="${esc(it.stab.incompatible)}"></label>
+          <label class="f"><span class="lab">Hazardous decomposition products</span><input class="in" data-path="items.${i}.stab.decomposition" value="${esc(it.stab.decomposition)}"></label>
         </div>
         ${capturedPanel(it.captured,'Captured from the SDS')}
         <div class="sub-h"><span class="t">Batches</span><span class="cnt">${it.batches.length} batch(es)</span><span class="grow" style="flex:1;"></span><label style="font-size:11px;color:var(--slate);display:inline-flex;align-items:center;gap:5px;">Unit <select class="in" style="width:auto;padding:3px 6px;" data-path="items.${i}.unit"><option value="Kg" ${it.unit==='Kg'?'selected':''}>Kg</option><option value="g" ${it.unit==='g'?'selected':''}>g</option><option value="mg" ${it.unit==='mg'?'selected':''}>mg</option></select></label></div>
