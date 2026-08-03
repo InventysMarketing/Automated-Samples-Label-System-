@@ -884,19 +884,27 @@ function outerBody(it,b,po,u){
     </div>
   </div>`;
 }
-/* auto-fit: measure content at scale 1 then scale font to fill the real label height */
+/* auto-fit: iteratively scale the font so the content fills the real label
+   height. A single pass is wrong when the scale is far from 1 — text wraps
+   differently at the scaled font size than at the base size, so we re-measure
+   at the candidate scale a few times until the height converges to the label. */
 function fitScale(it,b){
   const bo=bottle(b.bottleId);
-  const probe=document.createElement('div');
-  /* render at actual mm — no images in probe to ensure synchronous layout */
-  probe.style.cssText=`position:fixed;left:-99999px;top:0;width:${bo.ow}cm;visibility:hidden;pointer-events:none;`;
-  const noImgBody=outerBody(it,b,state.order.po,UP).replace(/<img[^>]*>/g,`<div style="height:${UP(6.5)};"></div>`);
-  probe.innerHTML=noImgBody;
-  document.body.appendChild(probe);
-  const contentPx=probe.scrollHeight||probe.offsetHeight||1;
-  document.body.removeChild(probe);
   const targetPx=bo.oh*PXCM;
-  return Math.max(0.3, Math.min(1.8, targetPx/contentPx));
+  const probe=document.createElement('div');
+  probe.style.cssText=`position:fixed;left:-99999px;top:0;width:${bo.ow}cm;visibility:hidden;pointer-events:none;`;
+  document.body.appendChild(probe);
+  let s=1;
+  for(let i=0;i<7;i++){
+    probe.innerHTML=outerBody(it,b,state.order.po,x=>(x*s)+'mm').replace(/<img[^>]*>/g,`<div style="height:${6.5*s}mm;"></div>`);
+    const h=probe.scrollHeight||probe.offsetHeight||1;
+    const ratio=targetPx/h;
+    if(!isFinite(ratio)||ratio<=0) break;
+    if(Math.abs(ratio-1)<0.01){ s*=ratio; break; }
+    s=Math.max(0.3, Math.min(2.2, s*ratio));
+  }
+  document.body.removeChild(probe);
+  return Math.max(0.3, Math.min(2.2, s));
 }
 /* auto-fit for the inner label — scales the base type up so the content fills
    the label (no wasted white space). Small-bottle tier keeps its own compact
