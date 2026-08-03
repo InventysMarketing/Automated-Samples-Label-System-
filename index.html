@@ -834,19 +834,19 @@ function outerBody(it,b,po,u){
   /* only show values we actually have — net weight, PO and HS stay blank when
      not found (never fabricate 0.000 or a dash). LOT is filled from the CoA. */
   const netWt = b.qty ? `${esc(b.qty)} ${esc(it.unit)}` : '';
-  const signalColor=it.signal==='Danger'?'#c2410c':it.signal==='Warning'?'#b45309':'#333';
   const field=(k,v)=>`<div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">${k}</span><span class="lab-v">${v||'&nbsp;'}</span></div>`;
   return `<div class="lab-pad flow" style="padding:${u(3.5)};display:flex;flex-direction:column;gap:${u(1.0)};">
-    <div class="lab-hd">${logoImg(6.5,u)}<div style="text-align:right;"><div class="lab-co" style="font-size:${u(2.5)};">Inventys Research Company Pvt Ltd</div><div style="font-size:${u(2.0)};color:#666;font-family:var(--label-sans);">MADE IN INDIA</div></div></div>
+    <div class="lab-hd"><div class="lab-co" style="font-size:${u(2.7)};max-width:66%;white-space:nowrap;">Inventys Research Company Pvt Ltd</div>${logoImg(7,u)}</div>
     <div class="lab-div"></div>
     <div class="lab-name" style="font-size:${u(3.9)};margin-top:${u(.2)};">${esc(outerNameOf(it))||'&nbsp;'}</div>
+    <div class="lab-row" style="font-size:${u(2.6)};margin-top:${u(.2)};"><span class="lab-k">CAS#:</span><span class="lab-v">${esc(it.cas)}</span>${it.hs?`<span class="lab-k" style="margin-left:${u(4)};">HS Code:</span><span class="lab-v">${esc(it.hs)}</span>`:''}</div>
+    <div class="lab-div"></div>
     <div style="display:flex;flex-direction:column;gap:${u(1.0)};">
-      ${field('LOT',esc(b.batch))}
-      ${field('NET WT',netWt)}
-      ${field('CAS#',esc(it.cas))}
-      ${field('HS',esc(it.hs))}
-      ${field('PO',esc(po))}
-      ${it.signal?`<div class="lab-row" style="font-size:${u(2.5)};"><span class="lab-k">GHS SIGNAL</span><span class="lab-v" style="color:${signalColor};font-weight:700;">${esc(it.signal).toUpperCase()}</span></div>`:''}
+      ${field('MANUFACTURER','Inventys Research Company Pvt Ltd')}
+      ${field('PO NO',esc(po))}
+      ${field('LOT NO',esc(b.batch))}
+      ${field('NET WEIGHT',netWt)}
+      ${field('ORIGIN','MADE IN INDIA')}
     </div>
     <div class="lab-div"></div>
     ${it.hazards.length?`<div class="lab-sec" style="font-size:${u(2.5)};color:#333;margin-bottom:${u(.35)};">HAZARD STATEMENTS</div>
@@ -868,8 +868,6 @@ function outerBody(it,b,po,u){
         <td style="width:46%;vertical-align:top;font-family:var(--label-sans);color:#333;font-weight:600;padding:0 ${u(1.5)} ${u(.35)} 0;">${esc(r[0])}</td>
         <td style="vertical-align:top;font-family:var(--label-sans);color:#333;padding:0 0 ${u(.35)} 0;">${esc(r[1])}</td>
       </tr>`).join('')}</table><div style="height:${u(.5)};"></div>`:'';})()}
-    ${it.storage?`<div class="lab-sec" style="font-size:${u(2.5)};margin-bottom:${u(.25)};">STORAGE</div>
-    <div style="font-family:var(--label-sans);font-size:${u(2.25)};color:#333;line-height:1.3;">${esc(it.storage)}</div><div style="height:${u(.5)};"></div>`:''}
     ${it.transport?`<div style="background:#f0f5ff;border:${u(.5)} solid #b8d0f0;border-radius:${u(1)};padding:${u(1.5)} ${u(2)};margin-top:${u(.3)};">
       <div class="lab-sec" style="font-size:${u(2.5)};color:#1b4e8a;margin-bottom:${u(.3)};">TRANSPORTATION INFORMATION</div>
       <div style="font-family:var(--label-mono);font-size:${u(2.0)};color:#1b4e8a;font-weight:600;line-height:1.35;word-break:break-word;white-space:pre-wrap;overflow-wrap:break-word;">${esc(it.transport)}</div>
@@ -1818,6 +1816,28 @@ function extractQtyRef(text){
   const m=(text||'').match(/(?:quantity|qty|batch size|lot size|pack size|net\s*(?:wt|weight)|package size)\s*[:\-]?\s*([0-9][0-9.,]*)\s*(kg|kgs|g|gm|grams?|mg|mt|tons?)\b/i);
   return m?(m[1].replace(/,/g,'')+' '+m[2].toLowerCase()):'';
 }
+/* Section 14 (Transport information) extractor — pulls 14.1 UN number,
+   14.3 transport hazard class and 14.4 packing group and formats them as
+   "UN3265, Class 8, Packing Group III".
+   If several regulations (DOT/IMDG/IATA/ADR…) list a field, collapse to one
+   value: identical → that value once; differing → the DOT value. */
+function extractTransport(text){
+  const T=(text||'').replace(/\r/g,'');
+  if(/not\s+(?:a\s+)?dangerous goods|not\s+regulated for transport|not\s+classified as dangerous|non[- ]?hazardous for transport/i.test(T)) return 'Not a Dangerous Goods';
+  // isolate Section 14 so digits from other sections don't leak in
+  let sec=T; const m14=T.match(/(?:section\s*14|\n\s*14[\.\)]\s)[\s\S]{0,2200}?(?=section\s*15|\n\s*15[\.\)]\s|$)/i); if(m14) sec=m14[0];
+  // text following a "14.<n>" label, up to the next 14.<m> label
+  const grab=(n)=>{ const re=new RegExp('14\\s*[\\.\\)]?\\s*'+n+'\\b','i'); const i=sec.search(re); if(i<0) return '';
+    let rest=sec.slice(i).replace(re,''); const j=rest.search(/14\s*[\.\)]?\s*\d\b/); return (j<0?rest:rest.slice(0,j)).slice(0,300); };
+  const c1=grab(1), c3=grab(3), c4=grab(4);
+  const one=(all,dotVal)=>{ all=all.filter(Boolean); if(!all.length) return ''; const u=[...new Set(all.map(x=>x.toUpperCase()))]; return u.length===1?all[0]:(dotVal||all[0]); };
+  const un=one([...c1.matchAll(/UN\s?(\d{4})/ig)].map(x=>x[1]), (c1.match(/DOT[\s\S]{0,60}?UN\s?(\d{4})/i)||[])[1]);
+  const cls=one([...c3.matchAll(/(\d(?:\.\d)?)/g)].map(x=>x[1]).filter(v=>{const f=parseFloat(v);return f>=1&&f<=9;}), (c3.match(/DOT[\s\S]{0,60}?(\d(?:\.\d)?)/i)||[])[1]);
+  const pg=one([...c4.matchAll(/\b(III|II|I)\b/g)].map(x=>x[1]), (c4.match(/DOT[\s\S]{0,60}?\b(III|II|I)\b/i)||[])[1]);
+  const parts=[]; if(un)parts.push('UN'+un); if(cls)parts.push('Class '+cls); if(pg)parts.push('Packing Group '+pg);
+  if(parts.length) return parts.join(', ');
+  const f=T.match(/\bUN\s?\d{4}\b[^\n]{0,60}/i); return f?f[0].trim():'';
+}
 /* exactly ONE batch number (structured token first, so a bare word like
    "Number" from a split table cell is never mistaken for the batch) */
 function extractOneBatch(text,fn){
@@ -2010,8 +2030,7 @@ document.getElementById('docFile').addEventListener('change',async function(e){
       if(rec.kind==='sds'){
         let m;
         if(m=text.match(/(?:conditions? for safe storage|storage conditions?|handling and storage|storage)\s*[:\-]?\s*([^\n]{6,180})/i)) rec.storage=m[1].trim();
-        if(/\bnot\b[^\n]{0,20}dangerous goods|not\s+regulated|not\s+classified as dangerous/i.test(text)) rec.transport='Not a Dangerous Goods';
-        else if(m=text.match(/\bUN\s?(\d{4})\b[^\n]{0,80}/i)) rec.transport=m[0].trim();
+        rec.transport=extractTransport(text);
       }
     }
     prepared.push(rec);
