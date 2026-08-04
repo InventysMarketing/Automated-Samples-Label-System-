@@ -576,6 +576,7 @@
       <div class="grid4">
         <label class="f"><span class="lab">Port of origin</span><input class="in" data-path="order.portOfOrigin" value="Mumbai"></label>
         <label class="f"><span class="lab">Port of discharge</span><input class="in" data-path="order.portOfDischarge" value="" placeholder="e.g. Tokyo, Japan"></label>
+        <label class="f"><span class="lab">Incoterms <span class="mono">(opt.)</span></span><input class="in" data-path="order.incoterms" value="" placeholder="e.g. CIF Tokyo — blank by default"></label>
         <label class="f"><span class="lab">Sample type</span><select class="in" data-path="order.sampleType"><option value="gratis">Free of cost sample</option><option value="paid">Paid</option></select></label>
         <label class="f"><span class="lab">Place of supply</span><input class="in" data-path="order.placeOfSupply" value="Mumbai, Maharashtra"></label>
       </div>
@@ -598,7 +599,7 @@
         <div></div><div></div>
       </div>
       <div class="grid4" style="margin-top:12px;">
-        <label class="f" style="grid-column:span 2;"><span class="lab">Payment terms</span><input class="in" data-path="order.paymentTerms" value="Net 60 days from date of invoice."></label>
+        <label class="f" style="grid-column:span 2;"><span class="lab">Payment terms</span><input class="in" data-path="order.paymentTerms" value="" placeholder="blank by default"></label>
         <label class="f"><span class="lab">Prep time</span><input class="in code" data-path="order.prepTime" value="04:00 PM"></label>
         <label class="f"><span class="lab">Removal date &amp; time</span><input class="in code" data-path="order.removalDate" placeholder="date" value=""> <input class="in code" data-path="order.removalTime" style="margin-top:4px;" value="10:00 PM"></label>
       </div>
@@ -754,7 +755,7 @@ function blankState(){return {
     reference:'',usdToInr:'85.00',placeOfSupply:'',sampleType:'gratis',
     buyerToOrder:'',buyerAddress:'',buyerAttn:'',buyerContact:'',
     consigneeSame:true,consignee:'',consigneeToOrder:'',consigneeAddress:'',consigneeAttn:'',consigneeContact:'',
-    portOfOrigin:'Mumbai',portOfDischarge:'',
+    portOfOrigin:'Mumbai',portOfDischarge:'',incoterms:'',
     portOfLoading:'Mumbai Airport, India',paymentTerms:'',
     prepTime:'04:00 PM',removalDate:'',removalTime:'10:00 PM',
     shipTransport:{mode:'By Air',carrier:'',awb:'',awbDate:'',deliveryPeriod:''},
@@ -1177,7 +1178,7 @@ function renderInvoice(){
       rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">BATCH # ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rate" value="${esc(it.rate)}"></td><td class="r">${amt.toFixed(2)}</td></tr>`;});
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--orange);margin-bottom:8px;">${title}</div>
       <table class="inv"><thead><tr><th style="width:34px;">#</th><th>Description</th><th class="r" style="width:110px;">Qty (Kg)</th><th class="r" style="width:130px;">Rate (USD/Kg)</th><th class="r" style="width:120px;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
-      <div class="inv-totals"><div class="row grand"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div><div class="inv-words">${wordsUSD(sub)}</div><div class="inv-words" style="margin-top:4px;"><b>Incoterms:</b> CIF${state.order.portOfDischarge?' '+esc(state.order.portOfDischarge):''} — Cost, Insurance &amp; Freight.</div></div>`;
+      <div class="inv-totals"><div class="row grand"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div><div class="inv-words">${wordsUSD(sub)}</div>${state.order.incoterms?`<div class="inv-words" style="margin-top:4px;"><b>Incoterms:</b> ${esc(state.order.incoterms)}</div>`:''}</div>`;
     note.innerHTML=`<b>${title}</b> — billed with the chosen name (Customer / Airline / Customs). Pricing = Qty × Rate.`;
   } else {
     const cg=parseFloat(state.tax.cgst)||0, sg=parseFloat(state.tax.sgst)||0, ig=parseFloat(state.tax.igst)||0;
@@ -1299,7 +1300,6 @@ function docMeta(){
   const payment = o.paymentTerms || (o.sampleType==='paid' ? 'As per agreed terms' : 'Free of cost sample. For R & D purpose only');
   const delivery = st.mode ? (/Door Delivery/i.test(st.mode)?st.mode:st.mode+' (Door Delivery)') : 'By Air (Door Delivery)';
   const transportation = (st.carrier?esc(st.carrier)+(st.mode?' — '+esc(st.mode):''):esc(st.mode||'By Air'))+(st.awb?' · AWB '+esc(st.awb):'');
-  const incoterms = 'CIF'+(o.portOfDischarge?' '+esc(o.portOfDischarge):'')+' (Cost, Insurance & Freight)';
   const remarks = o.placeOfSupply ? 'Place of Supply: '+esc(o.placeOfSupply) : '-';
   const row=(k,v)=>`<tr>
       <td style="width:120px;padding:3px 7px;border-right:1px solid #666;border-bottom:1px solid #666;font-weight:700;vertical-align:top;">${k}</td>
@@ -1308,7 +1308,7 @@ function docMeta(){
     ${row('Payment', esc(payment))}
     ${row('Delivery', esc(delivery))}
     ${row('Delivery Period', esc(st.deliveryPeriod||'-'))}
-    ${row('Incoterms', incoterms)}
+    ${o.incoterms?row('Incoterms', esc(o.incoterms)):''}
     ${row('Transportation', transportation)}
     ${row('Remarks', remarks)}
   </table>`;}
@@ -1569,8 +1569,7 @@ function gstPrint(){
         </div>
         <div style="margin-top:6px;font-size:7.5pt;border-top:1px solid #ccc;padding-top:4px;">
           <b>USD equivalent:</b> Rate/Kg USD ${ratePerKgUSD.toFixed(2)} &nbsp;|&nbsp; Total USD ${totUSD.toFixed(2)}<br>
-          Payment Terms: Net 60 days from date of invoice.<br>
-          ${esc(state.order.paymentTerms||'')}
+          ${state.order.paymentTerms?'Payment Terms: '+esc(state.order.paymentTerms):''}
         </div>
         <div style="margin-top:20px;text-align:center;border-top:1px solid #999;padding-top:4px;font-size:7.5pt;">
           For <b>Inventys Research Company Pvt. Ltd.</b><br><br><br>
