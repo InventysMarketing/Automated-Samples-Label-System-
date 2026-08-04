@@ -749,14 +749,17 @@ const CUSTOM_CODE='__custom__';
    Outer label     = product code (default; editable)
    Customer invoice= full material name only                                    */
 function fullMatName(it){return (it.customer||'').trim();}
-function shortMatName(it){return (it.matShort&&it.matShort.trim())||fullMatName(it);}
-function customsLong(it){const mid=[it.code,fullMatName(it)].filter(Boolean).join(' ').trim();return mid?(CPRE+mid+CSUF):'';}
+/* name used on the Airline & Customs documents — a dedicated box that is
+   independent of the client/customer name (falls back to it when left blank) */
+function customsNameOf(it){return (it.customsName&&it.customsName.trim())||fullMatName(it);}
+function shortMatName(it){return (it.matShort&&it.matShort.trim())||customsNameOf(it);}
+function customsLong(it){const mid=[it.code,customsNameOf(it)].filter(Boolean).join(' ').trim();return mid?(CPRE+mid+CSUF):'';}
 function customsName(code){const c=CATALOG[code];return c?(CPRE+(code+' '+c.customer).trim()+CSUF):'';}
 /* strip trailing molecular-structure labels (H3C, OH, O…) but keep leading locants like "2-" */
 function cleanChemName(s){s=(s||'').replace(/\s+/g,' ').trim();if(/\bacid\b/i.test(s))s=s.replace(/\b(acid)\b[\s\S]*$/i,'$1');s=s.replace(/(?:\s+(?:H3C|CH3|H\s*3\s*C|C\s*H\s*3|OH|HO|O|H))+$/,'').trim();return s;}
 function fill(item,code){const c=CATALOG[code];if(!c)return;item.code=code;item.customer=c.customer;item.airline=c.airline;item.cas=c.cas;item.hs=c.hs;item.signal=c.signal;item.hazards=c.hazards.map(x=>x.slice());item.precautions=c.precautions.map(x=>x.slice());item.storage=c.storage;item.transport=c.transport;}
 function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1',mfgDate:'',expDate:'',lotSize:'',outerWtNum:'',outerWtUnit:'',captured:[]};}
-function blankItem(){return {code:'',customer:'',matShort:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',stab:blankStab(),packSpec:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
+function blankItem(){return {code:'',customer:'',matShort:'',airline:'',customs:'',customsName:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',stab:blankStab(),packSpec:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
 function blankStab(){return {reactivity:'No data available',chemStability:'Stable under recommended storage conditions',hazReactions:'No data available',conditionsAvoid:'No data available',incompatible:'No data available',decomposition:'Carbon monoxide, carbon dioxide'};}
 function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rateInr=rateInr;it.batches=batches;fill(it,code);return it;}
 /* Everything starts blank; a saved document (localStorage) is restored on login.
@@ -989,9 +992,9 @@ function renderForm(){
         </div>
         <div class="grid4" style="margin-top:12px;">
           <label class="f"><span class="lab">Material name <span class="mono">(short)</span></span><input class="in" data-path="items.${i}.matShort" value="${esc(it.matShort||'')}" placeholder="shorter name"></label>
+          <label class="f"><span class="lab">Customs / Airline name <span class="mono">(those docs)</span></span><input class="in" data-path="items.${i}.customsName" value="${esc(it.customsName||'')}" placeholder="defaults to client name"></label>
           <label class="f"><span class="lab">CAS <span class="mono">no.</span></span><input class="in code" data-path="items.${i}.cas" value="${esc(it.cas)}"></label>
           <label class="f"><span class="lab">HS <span class="mono">code</span></span><input class="in code" data-path="items.${i}.hs" value="${esc(it.hs)}" placeholder="—"></label>
-          <div></div>
         </div>
         <div class="grid2" style="margin-top:12px;">
           <label class="f"><span class="lab">Rate <span class="mono">USD/${qU()}</span></span><input class="in code" data-path="items.${i}.rate" value="${esc(it.rate)}"></label>
