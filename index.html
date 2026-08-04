@@ -548,11 +548,16 @@
         <label class="f"><span class="lab">Buyer name</span><input class="in" data-path="order.buyer" value="Arxada AG"></label>
         <label class="f"><span class="lab">To the order of <span class="mono">(opt.)</span></span><input class="in" data-path="order.buyerToOrder" value="" placeholder="—"></label>
         <label class="f"><span class="lab">ATTN</span><input class="in" data-path="order.buyerAttn" value="" placeholder="contact person"></label>
-        <label class="f"><span class="lab">Contact <span class="mono">(tel/fax)</span></span><input class="in" data-path="order.buyerContact" value=""></label>
+        <label class="f"><span class="lab">Email</span><input class="in" data-path="order.buyerEmail" value="" placeholder="email id"></label>
       </div>
       <div class="grid4" style="margin-top:10px;">
-        <label class="f" style="grid-column:span 3;"><span class="lab">Buyer full address</span><textarea class="in" data-path="order.buyerAddress" rows="2">Lonzastrasse 2, Visp-3930, Visp, Switzerland</textarea></label>
+        <label class="f"><span class="lab">Tel No.</span><input class="in" data-path="order.buyerTel" value=""></label>
+        <label class="f"><span class="lab">Fax</span><input class="in" data-path="order.buyerFax" value=""></label>
+        <label class="f"><span class="lab">Direct / Mob. No.</span><input class="in" data-path="order.buyerMob" value=""></label>
         <label class="f"><span class="lab">Country</span><input class="in" data-path="order.country" value="Switzerland"></label>
+      </div>
+      <div class="grid4" style="margin-top:10px;">
+        <label class="f" style="grid-column:span 4;"><span class="lab">Buyer full address</span><textarea class="in" data-path="order.buyerAddress" rows="2">Lonzastrasse 2, Visp-3930, Visp, Switzerland</textarea></label>
       </div>
 
       <div class="inv-section-head" style="margin-top:14px;display:flex;align-items:center;gap:10px;">Consignee
@@ -565,7 +570,13 @@
           <label class="f"><span class="lab">Consignee name</span><input class="in" data-path="order.consignee" value=""></label>
           <label class="f"><span class="lab">To the order of <span class="mono">(opt.)</span></span><input class="in" data-path="order.consigneeToOrder" value=""></label>
           <label class="f"><span class="lab">ATTN</span><input class="in" data-path="order.consigneeAttn" value=""></label>
-          <label class="f"><span class="lab">Contact <span class="mono">(tel/fax)</span></span><input class="in" data-path="order.consigneeContact" value=""></label>
+          <label class="f"><span class="lab">Email</span><input class="in" data-path="order.consigneeEmail" value="" placeholder="email id"></label>
+        </div>
+        <div class="grid4" style="margin-top:10px;">
+          <label class="f"><span class="lab">Tel No.</span><input class="in" data-path="order.consigneeTel" value=""></label>
+          <label class="f"><span class="lab">Fax</span><input class="in" data-path="order.consigneeFax" value=""></label>
+          <label class="f"><span class="lab">Direct / Mob. No.</span><input class="in" data-path="order.consigneeMob" value=""></label>
+          <div></div>
         </div>
         <div class="grid4" style="margin-top:10px;">
           <label class="f" style="grid-column:span 4;"><span class="lab">Consignee full address</span><textarea class="in" data-path="order.consigneeAddress" rows="2"></textarea></label>
@@ -753,8 +764,8 @@ function blankState(){return {
   docName:'', _fid:0,
   order:{buyer:'',country:'',po:'',inv:'',date:'',
     reference:'',usdToInr:'85.00',placeOfSupply:'',sampleType:'gratis',
-    buyerToOrder:'',buyerAddress:'',buyerAttn:'',buyerContact:'',
-    consigneeSame:true,consignee:'',consigneeToOrder:'',consigneeAddress:'',consigneeAttn:'',consigneeContact:'',
+    buyerToOrder:'',buyerAddress:'',buyerAttn:'',buyerContact:'',buyerTel:'',buyerFax:'',buyerMob:'',buyerEmail:'',
+    consigneeSame:true,consignee:'',consigneeToOrder:'',consigneeAddress:'',consigneeAttn:'',consigneeContact:'',consigneeTel:'',consigneeFax:'',consigneeMob:'',consigneeEmail:'',
     portOfOrigin:'Mumbai',portOfDischarge:'',incoterms:'',
     portOfLoading:'Mumbai Airport, India',paymentTerms:'',
     prepTime:'04:00 PM',removalDate:'',removalTime:'10:00 PM',
@@ -787,10 +798,20 @@ function hydrateInputs(){
 }
 function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 /* buyer / consignee resolution (consignee falls back to buyer when "same as buyer") */
-function buyerInfo(){const o=state.order;return {name:o.buyer,toOrder:o.buyerToOrder,address:o.buyerAddress||o.country,attn:o.buyerAttn,contact:o.buyerContact,country:o.country};}
+function buyerInfo(){const o=state.order;return {name:o.buyer,toOrder:o.buyerToOrder,address:o.buyerAddress||o.country,attn:o.buyerAttn,contact:o.buyerContact,tel:o.buyerTel,fax:o.buyerFax,mob:o.buyerMob,email:o.buyerEmail,country:o.country};}
 function consigneeInfo(){const o=state.order;
   if(o.consigneeSame!==false) return buyerInfo();
-  return {name:o.consignee||o.buyer,toOrder:o.consigneeToOrder,address:o.consigneeAddress||o.buyerAddress||o.country,attn:o.consigneeAttn,contact:o.consigneeContact,country:o.country};}
+  return {name:o.consignee||o.buyer,toOrder:o.consigneeToOrder,address:o.consigneeAddress||o.buyerAddress||o.country,attn:o.consigneeAttn,contact:o.consigneeContact,tel:o.consigneeTel,fax:o.consigneeFax,mob:o.consigneeMob,email:o.consigneeEmail,country:o.country};}
+/* structured party contact lines (Tel / Direct-Mob / Fax / Email), shown on the documents */
+function partyContacts(p){const L=[];
+  if(p.attn)L.push('ATTN: '+esc(p.attn));
+  if(p.tel)L.push('Tel: '+esc(p.tel));
+  if(p.mob)L.push('Direct/Mob: '+esc(p.mob));
+  if(p.fax)L.push('Fax: '+esc(p.fax));
+  if(p.email)L.push('Email: '+esc(p.email));
+  if(!L.length && p.contact)L.push('Contact: '+esc(p.contact));
+  return L.length?L.join('<br>'):'';}
+function toOrderLine(p){if(!p.toOrder)return '';const t=(''+p.toOrder).trim();return 'To The Order Of'+(t&&!/^(x|yes|y|true|1)$/i.test(t)?' — '+esc(t):'')+'<br>';}
 /* label name resolution: per-label override wins, else customer name */
 function innerNameOf(it){return (it.innerName&&it.innerName.trim())||it.customer;}
 function outerNameOf(it){return (it.outerName&&it.outerName.trim())||it.code||it.customer;}
@@ -1284,7 +1305,8 @@ function docHeader(title,sub,noLabel){return `
     </tr>
   </table>`;}
 function partyCell(label,p){
-  return `<td style="width:37%;padding:5px 7px;border-right:1px solid #666;vertical-align:top;"><b>${label}</b><br>${p.toOrder?'To The Order Of<br>':''}<b>${esc(p.name)}</b><br>${esc(p.address)}<br>${p.attn?'ATTN: '+esc(p.attn)+'<br>':''}${p.contact?'Contact: '+esc(p.contact):''}</td>`;
+  const c=partyContacts(p);
+  return `<td style="width:37%;padding:5px 7px;border-right:1px solid #666;vertical-align:top;"><b>${label}</b><br>${toOrderLine(p)}<b>${esc(p.name)}</b><br>${esc(p.address)}${c?'<br>'+c:''}</td>`;
 }
 function docParties(){
   const o=state.order, B=buyerInfo(), C=consigneeInfo();
@@ -1501,8 +1523,8 @@ function gstPrint(){
         <div style="margin-top:5px;"><b>Date &amp; Time of Removal:</b><br>${esc(state.order.removalDate||state.order.date)} ${esc(state.order.removalTime||'10:00 PM')}</div>
       </td>
       <td style="width:30%;padding:5px 7px;vertical-align:top;font-size:7.5pt;">
-        <b>Buyer:</b> <b>${esc(buyerInfo().name)}</b><br>${esc(buyerInfo().address)}<br>${buyerInfo().attn?'ATTN: '+esc(buyerInfo().attn)+'<br>':''}
-        <b>Consignee:</b> <b>${esc(consigneeInfo().name)}</b><br>${esc(consigneeInfo().address)}<br>
+        <b>Buyer:</b> ${toOrderLine(buyerInfo())}<b>${esc(buyerInfo().name)}</b><br>${esc(buyerInfo().address)}${partyContacts(buyerInfo())?'<br>'+partyContacts(buyerInfo()):''}<br>
+        <b>Consignee:</b> ${toOrderLine(consigneeInfo())}<b>${esc(consigneeInfo().name)}</b><br>${esc(consigneeInfo().address)}${partyContacts(consigneeInfo())?'<br>'+partyContacts(consigneeInfo()):''}<br>
         <b>Port of Loading:</b> ${esc(state.order.portOfLoading||'Mumbai Airport, India')}
       </td>
     </tr>
