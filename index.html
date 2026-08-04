@@ -1198,7 +1198,7 @@ function renderInvoice(){
     const title='PROFORMA INVOICE';
     let sub=0,rows='';
     state.items.forEach((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rate)||0,amt=m.totNet*rate;sub+=amt;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');
-      rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">BATCH # ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rate" value="${esc(it.rate)}"></td><td class="r">${amt.toFixed(2)}</td></tr>`;});
+      rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">BATCH # ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rate" value="${esc(it.rate)}"></td><td class="r"><input class="inv-rate inv-amt" data-i="${i}" data-field="rate" value="${amt.toFixed(2)}" title="Type a total amount to auto-calc the rate"></td></tr>`;});
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--orange);margin-bottom:8px;">${title}</div>
       <table class="inv"><thead><tr><th style="width:34px;">#</th><th>Description</th><th class="r" style="width:110px;">Qty (${qU()})</th><th class="r" style="width:130px;">Rate (USD/${qU()})</th><th class="r" style="width:120px;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="inv-totals"><div class="row grand"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div><div class="inv-words">${wordsUSD(sub)}</div>${state.order.incoterms?`<div class="inv-words" style="margin-top:4px;"><b>Incoterms:</b> ${esc(state.order.incoterms)}</div>`:''}</div>`;
@@ -1207,7 +1207,7 @@ function renderInvoice(){
     const cg=parseFloat(state.tax.cgst)||0, sg=parseFloat(state.tax.sgst)||0, ig=parseFloat(state.tax.igst)||0;
     let assess=0,rows='';
     state.items.forEach((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rateInr)||0,val=m.totNet*rate;assess+=val;const idm=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
-      rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(customsLong(it))}</div></td><td class="r">${esc(it.hs)}</td><td>${esc(idm)}</td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rateInr" value="${esc(it.rateInr)}"></td><td class="r">${val.toFixed(2)}</td></tr>`;});
+      rows+=`<tr><td class="r">${i+1}</td><td><div class="inv-desc">${esc(customsLong(it))}</div></td><td class="r">${esc(it.hs)}</td><td>${esc(idm)}</td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rateInr" value="${esc(it.rateInr)}"></td><td class="r"><input class="inv-rate inv-amt" data-i="${i}" data-field="rateInr" value="${val.toFixed(2)}" title="Type a total value to auto-calc the rate"></td></tr>`;});
     const cgA=assess*cg/100, sgA=assess*sg/100, igA=assess*ig/100, total=assess+cgA+sgA+igA;
     const st=state.order.shipTransport||{}, ins=state.order.insurance||{};
     const shipHtml=`<div class="inv-section-head">Shipping &amp; Insurance Details</div>
@@ -2078,6 +2078,12 @@ document.getElementById('docFile').addEventListener('change',async function(e){
 
 function renderAll(){renderForm();renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
 document.body.addEventListener('input',e=>{const el=e.target;
+  if(el.classList.contains('inv-amt')){ // type a total amount -> back-calc rate/unit (no re-render while typing)
+    const it=state.items[+el.dataset.i]; if(!it)return;
+    const m=lineMetrics(it), amt=parseFloat(el.value)||0, r=m.totNet>0?amt/m.totNet:0;
+    if(el.dataset.field==='rateInr') it.rateInr=r?r.toFixed(2):'0'; else it.rate=r?r.toFixed(4):'0';
+    autosave(); return;
+  }
   if(el.dataset.tax){state.tax[el.dataset.tax]=el.value;autosave();return;} // no re-render while typing
   if(el.dataset.path){
     setPath(el.dataset.path,el.value);
@@ -2087,6 +2093,7 @@ document.body.addEventListener('input',e=>{const el=e.target;
 });
 document.body.addEventListener('change',e=>{const el=e.target;
   if(el.dataset.role==='code'){const it=state.items[+el.dataset.i]; if(el.value===CUSTOM_CODE){it.code='';} else {fill(it,el.value);} renderAll();autosave();return;}
+  if(el.classList.contains('inv-amt')){renderInvoice();autosave();return;} // re-render (updates rate cell) on blur
   if(el.dataset.tax){renderInvoice();autosave();return;}  // re-render on blur for tax fields
   if(el.tagName==='SELECT'&&el.dataset.path){setPath(el.dataset.path,el.value);renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();autosave();}
   if(el.dataset.path&&el.closest('#invArea')){renderInvoice();autosave();} // re-render invoice on blur for inv-rate fields
