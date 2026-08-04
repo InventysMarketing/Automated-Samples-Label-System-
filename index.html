@@ -756,7 +756,7 @@ function customsName(code){const c=CATALOG[code];return c?(CPRE+(code+' '+c.cust
 function cleanChemName(s){s=(s||'').replace(/\s+/g,' ').trim();if(/\bacid\b/i.test(s))s=s.replace(/\b(acid)\b[\s\S]*$/i,'$1');s=s.replace(/(?:\s+(?:H3C|CH3|H\s*3\s*C|C\s*H\s*3|OH|HO|O|H))+$/,'').trim();return s;}
 function fill(item,code){const c=CATALOG[code];if(!c)return;item.code=code;item.customer=c.customer;item.airline=c.airline;item.cas=c.cas;item.hs=c.hs;item.signal=c.signal;item.hazards=c.hazards.map(x=>x.slice());item.precautions=c.precautions.map(x=>x.slice());item.storage=c.storage;item.transport=c.transport;}
 function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1',mfgDate:'',expDate:'',lotSize:'',outerWtNum:'',outerWtUnit:'',captured:[]};}
-function blankItem(){return {code:'',customer:'',matShort:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',stab:blankStab(),unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
+function blankItem(){return {code:'',customer:'',matShort:'',airline:'',customs:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',stab:blankStab(),packSpec:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
 function blankStab(){return {reactivity:'No data available',chemStability:'Stable under recommended storage conditions',hazReactions:'No data available',conditionsAvoid:'No data available',incompatible:'No data available',decomposition:'Carbon monoxide, carbon dioxide'};}
 function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rateInr=rateInr;it.batches=batches;fill(it,code);return it;}
 /* Everything starts blank; a saved document (localStorage) is restored on login.
@@ -1008,6 +1008,9 @@ function renderForm(){
           <label class="f"><span class="lab">Storage conditions</span><textarea class="in" data-path="items.${i}.storage">${esc(it.storage)}</textarea></label>
           <label class="f"><span class="lab">Transport / DG (Transportation Information)</span><textarea class="in" data-path="items.${i}.transport">${esc(it.transport)}</textarea></label>
         </div>
+        <div class="grid2" style="margin-top:12px;">
+          <label class="f" style="grid-column:span 2;"><span class="lab">Packing specification <span class="mono">(Packing List remark)</span></span><input class="in" data-path="items.${i}.packSpec" value="${esc(it.packSpec||'')}" placeholder="e.g. 8 × 50 g glass bottles packed in 1 + UN cardboard box"></label>
+        </div>
         <div class="sub-h" style="margin-top:14px;"><span class="t">Stability &amp; Reactivity</span><span class="cnt">shown on the outer label</span></div>
         <div class="grid2" style="margin-top:8px;">
           <label class="f"><span class="lab">Reactivity</span><input class="in" data-path="items.${i}.stab.reactivity" value="${esc(it.stab.reactivity)}"></label>
@@ -1186,7 +1189,7 @@ function renderInvoice(){
   if(docType==='packing'){
     let rows='',totPkgs=0,totNet=0;
     state.items.forEach((it,i)=>{const m=lineMetrics(it);totPkgs+=m.pkgs;totNet+=m.totNet;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
-      rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">Batch/Lot: ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td>Sample for R&amp;D</td></tr>`;});
+      rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">Batch/Lot: ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td>${it.packSpec?esc(it.packSpec):'Sample for R&amp;D'}</td></tr>`;});
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:8px;">PACKING LIST</div>
       <table class="inv"><thead><tr><th style="width:34px;">S.No</th><th>Description</th><th class="r" style="width:70px;">Pkgs</th><th class="r" style="width:100px;">Net/Pkg (${qU()})</th><th class="r" style="width:110px;">Total Net (${qU()})</th><th style="width:130px;">Remarks</th></tr></thead><tbody>${rows}</tbody>
       <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td>Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
@@ -1394,7 +1397,7 @@ function packingPrint(){
       <td class="r" style="width:10%;">${m.pkgs}</td>
       <td class="r" style="width:13%;">${perPkg.toFixed(3)}</td>
       <td class="r" style="width:13%;">${m.totNet.toFixed(3)}</td>
-      <td style="width:17%;">Sample for R&amp;D</td>
+      <td style="width:17%;">${it.packSpec?esc(it.packSpec):'Sample for R&amp;D'}</td>
     </tr>`;}).join('');
   return `<div class="pinv" style="font-size:9pt;">
     ${docHeader('PACKING LIST','','Packing List')}
