@@ -1193,7 +1193,7 @@ function renderInvoice(){
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:8px;">PACKING LIST</div>
       <table class="inv"><thead><tr><th style="width:34px;">S.No</th><th>Description</th><th class="r" style="width:70px;">Pkgs</th><th class="r" style="width:100px;">Net/Pkg (${qU()})</th><th class="r" style="width:110px;">Total Net (${qU()})</th><th style="width:130px;">Remarks</th></tr></thead><tbody>${rows}</tbody>
       <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td>Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
-      <div class="inv-totals"><div class="inv-words">No commercial value — packing list only. ${totPkgs} package(s), total net ${totNet.toFixed(3)} ${qU()}.</div></div>`;
+      <div class="inv-totals"><div class="inv-words">${state.order.sampleType!=='paid'?'No commercial value — packing list only. ':''}${totPkgs} package(s), total net ${totNet.toFixed(3)} ${qU()}.</div></div>`;
     note.innerHTML='<b>PACKING LIST</b> — no prices; shows packages, net weight and remarks. Uses the chosen name (Customer / Airline / Customs).';
     return;
   }
@@ -1406,7 +1406,7 @@ function packingPrint(){
       <th style="width:5%;">S.No</th><th style="width:42%;">Description of Goods</th><th class="r" style="width:10%;">No. of Pkg.</th><th class="r" style="width:13%;">Net Wt / Pkg. ${qU()}</th><th class="r" style="width:13%;">Total Net Wt ${qU()}</th><th style="width:17%;">Remarks</th>
     </tr></thead><tbody>${rows}</tbody>
     <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td class="r">Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Total packages:</b> ${totPkgs} &nbsp;·&nbsp; <b>Total net weight:</b> ${totNet.toFixed(3)} ${qU()} &nbsp;·&nbsp; <span style="font-style:italic;color:#555;">No commercial value — packing list only.</span></td></tr></table>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Total packages:</b> ${totPkgs} &nbsp;·&nbsp; <b>Total net weight:</b> ${totNet.toFixed(3)} ${qU()}${state.order.sampleType!=='paid'?' &nbsp;·&nbsp; <span style="font-style:italic;color:#555;">No commercial value — packing list only.</span>':''}</td></tr></table>
     ${docMeta()}
     <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;"><tr>
       <td style="width:65%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;">Goods &amp; Service Tax Details: GSTIN 27AABCI4415K1ZL · IEC 0306019141 · 100% Export Oriented Unit.</td>
