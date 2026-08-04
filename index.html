@@ -590,6 +590,7 @@
         <label class="f"><span class="lab">Incoterms <span class="mono">(opt.)</span></span><input class="in" data-path="order.incoterms" value="" placeholder="e.g. CIF Tokyo — blank by default"></label>
         <label class="f"><span class="lab">Sample type</span><select class="in" data-path="order.sampleType"><option value="gratis">Free of cost sample</option><option value="paid">Paid</option></select></label>
         <label class="f"><span class="lab">Place of supply</span><input class="in" data-path="order.placeOfSupply" value="Mumbai, Maharashtra"></label>
+        <label class="f"><span class="lab">Quantity unit <span class="mono">(all documents)</span></span><select class="in" data-path="order.qtyUnit"><option value="Kg">Kg</option><option value="g">g</option></select></label>
       </div>
       <div class="grid4" style="margin-top:12px;">
         <label class="f"><span class="lab">USD → INR rate <button class="xrate-sync" id="syncInrBtn">↻ Sync live rate</button> <span id="rateSpin" style="display:none;color:var(--orange);font-family:var(--mono);font-size:10px;">● loading…</span></span><input class="in code" data-path="order.usdToInr" value="85.00"></label>
@@ -763,7 +764,7 @@ function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rate
 function blankState(){return {
   docName:'', _fid:0,
   order:{buyer:'',country:'',po:'',inv:'',date:'',
-    reference:'',usdToInr:'85.00',placeOfSupply:'',sampleType:'gratis',
+    reference:'',usdToInr:'85.00',placeOfSupply:'',sampleType:'gratis',qtyUnit:'Kg',
     buyerToOrder:'',buyerAddress:'',buyerAttn:'',buyerContact:'',buyerTel:'',buyerFax:'',buyerMob:'',buyerEmail:'',
     consigneeSame:true,consignee:'',consigneeToOrder:'',consigneeAddress:'',consigneeAttn:'',consigneeContact:'',consigneeTel:'',consigneeFax:'',consigneeMob:'',consigneeEmail:'',
     portOfOrigin:'Mumbai',portOfDischarge:'',incoterms:'',
@@ -993,8 +994,8 @@ function renderForm(){
           <div></div>
         </div>
         <div class="grid2" style="margin-top:12px;">
-          <label class="f"><span class="lab">Rate <span class="mono">USD/Kg</span></span><input class="in code" data-path="items.${i}.rate" value="${esc(it.rate)}"></label>
-          <label class="f"><span class="lab">Rate <span class="mono">Rs/Kg</span></span><input class="in code" data-path="items.${i}.rateInr" value="${esc(it.rateInr)}"></label>
+          <label class="f"><span class="lab">Rate <span class="mono">USD/${qU()}</span></span><input class="in code" data-path="items.${i}.rate" value="${esc(it.rate)}"></label>
+          <label class="f"><span class="lab">Rate <span class="mono">Rs/${qU()}</span></span><input class="in code" data-path="items.${i}.rateInr" value="${esc(it.rateInr)}"></label>
         </div>
         <div style="margin-top:12px;padding:9px 11px;background:#f6f8fb;border:1px solid #e6ebf1;border-radius:6px;font-size:11px;line-height:1.5;">
           <div style="font-weight:700;color:var(--slate);margin-bottom:3px;">Auto-synced names (used on the documents)</div>
@@ -1169,6 +1170,7 @@ function descPrint(it){
   if(aud==='airline'){ return `<b>${esc(it.code||'')}</b>${it.code?'<br>':''}${esc(shortMatName(it))}`; }
   return `<b>${esc(nameFor(it))}</b>`;
 }
+function qU(){return state.order.qtyUnit||'Kg';}
 function lineMetrics(it){
   const pkgs=it.batches.reduce((s,b)=>s+Math.max(0,parseInt(b.copies)||0),0);
   const totNet=it.batches.reduce((s,b)=>s+(parseFloat(b.qty)||0)*Math.max(0,parseInt(b.copies)||0),0);
@@ -1186,9 +1188,9 @@ function renderInvoice(){
     state.items.forEach((it,i)=>{const m=lineMetrics(it);totPkgs+=m.pkgs;totNet+=m.totNet;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
       rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">Batch/Lot: ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td>Sample for R&amp;D</td></tr>`;});
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:8px;">PACKING LIST</div>
-      <table class="inv"><thead><tr><th style="width:34px;">S.No</th><th>Description</th><th class="r" style="width:70px;">Pkgs</th><th class="r" style="width:100px;">Net/Pkg (Kg)</th><th class="r" style="width:110px;">Total Net (Kg)</th><th style="width:130px;">Remarks</th></tr></thead><tbody>${rows}</tbody>
+      <table class="inv"><thead><tr><th style="width:34px;">S.No</th><th>Description</th><th class="r" style="width:70px;">Pkgs</th><th class="r" style="width:100px;">Net/Pkg (${qU()})</th><th class="r" style="width:110px;">Total Net (${qU()})</th><th style="width:130px;">Remarks</th></tr></thead><tbody>${rows}</tbody>
       <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td>Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
-      <div class="inv-totals"><div class="inv-words">No commercial value — packing list only. ${totPkgs} package(s), total net ${totNet.toFixed(3)} Kg.</div></div>`;
+      <div class="inv-totals"><div class="inv-words">No commercial value — packing list only. ${totPkgs} package(s), total net ${totNet.toFixed(3)} ${qU()}.</div></div>`;
     note.innerHTML='<b>PACKING LIST</b> — no prices; shows packages, net weight and remarks. Uses the chosen name (Customer / Airline / Customs).';
     return;
   }
@@ -1198,7 +1200,7 @@ function renderInvoice(){
     state.items.forEach((it,i)=>{const m=lineMetrics(it),rate=parseFloat(it.rate)||0,amt=m.totNet*rate;sub+=amt;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');
       rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">BATCH # ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.totNet.toFixed(3)}</td><td class="r"><input class="inv-rate" data-path="items.${i}.rate" value="${esc(it.rate)}"></td><td class="r">${amt.toFixed(2)}</td></tr>`;});
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--orange);margin-bottom:8px;">${title}</div>
-      <table class="inv"><thead><tr><th style="width:34px;">#</th><th>Description</th><th class="r" style="width:110px;">Qty (Kg)</th><th class="r" style="width:130px;">Rate (USD/Kg)</th><th class="r" style="width:120px;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
+      <table class="inv"><thead><tr><th style="width:34px;">#</th><th>Description</th><th class="r" style="width:110px;">Qty (${qU()})</th><th class="r" style="width:130px;">Rate (USD/${qU()})</th><th class="r" style="width:120px;">Amount (USD)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="inv-totals"><div class="row grand"><span>Total</span><span>USD ${sub.toFixed(2)}</span></div><div class="inv-words">${wordsUSD(sub)}</div>${state.order.incoterms?`<div class="inv-words" style="margin-top:4px;"><b>Incoterms:</b> ${esc(state.order.incoterms)}</div>`:''}</div>`;
     note.innerHTML=`<b>${title}</b> — billed with the chosen name (Customer / Airline / Customs). Pricing = Qty × Rate.`;
   } else {
@@ -1219,7 +1221,7 @@ function renderInvoice(){
         <div class="inv-ship-row"><span class="inv-ship-k">Ins. Amount:</span><span class="inv-ship-v">${esc(ins.amount||'—')}</span></div>
         <div class="inv-ship-row"><span class="inv-ship-k">Place of Supply:</span><span class="inv-ship-v">${esc(state.order.placeOfSupply||'')}</span></div>
       </div>`;
-    area.innerHTML=`<table class="inv"><thead><tr><th>#</th><th>Description of Goods</th><th>HSN</th><th>Id. Mark</th><th class="r">Pkgs</th><th class="r">Net/Pkg</th><th class="r">Total Net (Kg)</th><th class="r">Rate (Rs/Kg)</th><th class="r">Value (Rs)</th></tr></thead><tbody>${rows}</tbody></table>
+    area.innerHTML=`<table class="inv"><thead><tr><th>#</th><th>Description of Goods</th><th>HSN</th><th>Id. Mark</th><th class="r">Pkgs</th><th class="r">Net/Pkg</th><th class="r">Total Net (${qU()})</th><th class="r">Rate (Rs/${qU()})</th><th class="r">Value (Rs)</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="inv-totals" style="gap:5px;">
         <div class="row" style="background:var(--blue-tint);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--mono);color:#1d4e7a;font-weight:600;"><span>Exchange Rate</span><span>1 USD = ₹${(parseFloat(state.order.usdToInr)||85).toFixed(2)} (as entered)</span></div>
         <div class="row"><span>Total Assessable Value</span><span>Rs ${assess.toFixed(2)}</span></div>
@@ -1371,7 +1373,7 @@ function proformaPrint(){
     ${docHeader('PROFORMA INVOICE','(USD Terms)','Invoice')}
     ${docParties()}
     <table class="pinvt" style="border-top:none;"><thead><tr style="background:#fbe6d5;">
-      <th style="width:5%;">No.</th><th style="width:44%;">Description of Goods</th><th class="r" style="width:13%;">Qty (Kg)</th><th class="r" style="width:17%;">Rate (USD/Kg)</th><th class="r" style="width:16%;">Amount (USD)</th>
+      <th style="width:5%;">No.</th><th style="width:44%;">Description of Goods</th><th class="r" style="width:13%;">Qty (${qU()})</th><th class="r" style="width:17%;">Rate (USD/${qU()})</th><th class="r" style="width:16%;">Amount (USD)</th>
     </tr></thead><tbody>${rows}</tbody>
     <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td class="r">Sub Total</td><td class="r">${state.items.reduce((s,it)=>s+lineMetrics(it).totNet,0).toFixed(3)}</td><td></td><td class="r">USD ${sub.toFixed(2)}</td></tr></tfoot></table>
     <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Amount in words:</b> ${wordsUSD(sub)}${gratis?' &nbsp; <span style="font-style:italic;color:#555;">(Free / Research sample — value for customs purposes only)</span>':''}</td></tr></table>
@@ -1398,10 +1400,10 @@ function packingPrint(){
     ${docHeader('PACKING LIST','','Packing List')}
     ${docParties()}
     <table class="pinvt" style="border-top:none;"><thead><tr style="background:#dce6f0;">
-      <th style="width:5%;">S.No</th><th style="width:42%;">Description of Goods</th><th class="r" style="width:10%;">No. of Pkg.</th><th class="r" style="width:13%;">Net Wt / Pkg. Kg</th><th class="r" style="width:13%;">Total Net Wt Kg</th><th style="width:17%;">Remarks</th>
+      <th style="width:5%;">S.No</th><th style="width:42%;">Description of Goods</th><th class="r" style="width:10%;">No. of Pkg.</th><th class="r" style="width:13%;">Net Wt / Pkg. ${qU()}</th><th class="r" style="width:13%;">Total Net Wt ${qU()}</th><th style="width:17%;">Remarks</th>
     </tr></thead><tbody>${rows}</tbody>
     <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td class="r">Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Total packages:</b> ${totPkgs} &nbsp;·&nbsp; <b>Total net weight:</b> ${totNet.toFixed(3)} Kg &nbsp;·&nbsp; <span style="font-style:italic;color:#555;">No commercial value — packing list only.</span></td></tr></table>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Total packages:</b> ${totPkgs} &nbsp;·&nbsp; <b>Total net weight:</b> ${totNet.toFixed(3)} ${qU()} &nbsp;·&nbsp; <span style="font-style:italic;color:#555;">No commercial value — packing list only.</span></td></tr></table>
     ${docMeta()}
     <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;"><tr>
       <td style="width:65%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;">Goods &amp; Service Tax Details: GSTIN 27AABCI4415K1ZL · IEC 0306019141 · 100% Export Oriented Unit.</td>
@@ -1538,9 +1540,9 @@ function gstPrint(){
         <th style="width:9%;">Chapter No. &amp; HSN Code</th>
         <th style="width:13%;">Identification Mark</th>
         <th class="r" style="width:6%;">No. of Pkg.</th>
-        <th class="r" style="width:9%;">Net Wt / Pkg. Kg</th>
-        <th class="r" style="width:9%;">Total Net Wt Kg</th>
-        <th class="r" style="width:11%;">Rate Per Kg Rs.</th>
+        <th class="r" style="width:9%;">Net Wt / Pkg. ${qU()}</th>
+        <th class="r" style="width:9%;">Total Net Wt ${qU()}</th>
+        <th class="r" style="width:11%;">Rate Per ${qU()} Rs.</th>
         <th class="r" style="width:12%;">Value in Rs.</th>
       </tr>
     </thead>
@@ -1589,7 +1591,7 @@ function gstPrint(){
           <b>In words:</b> ${wordsINR(total)}
         </div>
         <div style="margin-top:6px;font-size:7.5pt;border-top:1px solid #ccc;padding-top:4px;">
-          <b>USD equivalent:</b> Rate/Kg USD ${ratePerKgUSD.toFixed(2)} &nbsp;|&nbsp; Total USD ${totUSD.toFixed(2)}<br>
+          <b>USD equivalent:</b> Rate/${qU()} USD ${ratePerKgUSD.toFixed(2)} &nbsp;|&nbsp; Total USD ${totUSD.toFixed(2)}<br>
           ${state.order.paymentTerms?'Payment Terms: '+esc(state.order.paymentTerms):''}
         </div>
         <div style="margin-top:20px;text-align:center;border-top:1px solid #999;padding-top:4px;font-size:7.5pt;">
