@@ -1444,16 +1444,14 @@ function gstPrint(){
     const batchNos=it.batches.map(b=>b.batch).filter(Boolean).join(', ');
     const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
     const rateUSD=parseFloat(it.rate)||0;
-    const idMark=`PO No : ${esc(state.order.po)}\nPO Date : ${esc(state.order.date||'—')}`;
     return `<tr>
       <td class="r" style="width:4%;">${i+1}</td>
       <td style="width:22%;">
         <b>${esc(customsLong(it))}</b><br>
-        <span style="font-size:7.5pt;color:#333;">Consignee: ${esc(consigneeInfo().name)}, ${esc(consigneeInfo().address)}</span><br>
         <span style="font-size:7pt;font-family:var(--label-mono);color:#555;">CAS: ${esc(it.cas)}</span>
       </td>
       <td style="width:9%;">${esc(it.hs)}</td>
-      <td style="width:13%;white-space:pre-line;font-size:7.5pt;">${esc(idMark)}\nBatch: ${esc(batchNos)}</td>
+      <td style="width:13%;white-space:pre-line;font-size:7.5pt;">${batchNos?'Batch: '+esc(batchNos):'—'}</td>
       <td class="r" style="width:6%;">${m.pkgs}</td>
       <td class="r" style="width:9%;">${perPkg.toFixed(3)}</td>
       <td class="r" style="width:9%;">${m.totNet.toFixed(3)}</td>
@@ -1525,7 +1523,8 @@ function gstPrint(){
       <td style="width:30%;padding:5px 7px;vertical-align:top;font-size:7.5pt;">
         <b>Buyer:</b> ${toOrderLine(buyerInfo())}<b>${esc(buyerInfo().name)}</b><br>${esc(buyerInfo().address)}${partyContacts(buyerInfo())?'<br>'+partyContacts(buyerInfo()):''}<br>
         <b>Consignee:</b> ${toOrderLine(consigneeInfo())}<b>${esc(consigneeInfo().name)}</b><br>${esc(consigneeInfo().address)}${partyContacts(consigneeInfo())?'<br>'+partyContacts(consigneeInfo()):''}<br>
-        <b>Port of Loading:</b> ${esc(state.order.portOfLoading||'Mumbai Airport, India')}
+        <b>Port of Loading:</b> ${esc(state.order.portOfLoading||'Mumbai Airport, India')}<br>
+        <b>Port of Discharge:</b> ${esc(state.order.portOfDischarge||'—')}
       </td>
     </tr>
   </table>
