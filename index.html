@@ -1192,11 +1192,11 @@ function renderInvoice(){
   if(docType==='packing'){
     let rows='',totPkgs=0,totNet=0;
     state.items.forEach((it,i)=>{const m=lineMetrics(it);totPkgs+=m.pkgs;totNet+=m.totNet;const bb=it.batches.map(b=>b.batch).filter(Boolean).join(', ');const perPkg=m.pkgs?(m.totNet/m.pkgs):0;
-      rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">Batch/Lot: ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td>${it.packSpec?esc(it.packSpec):'Sample for R&amp;D'}</td></tr>`;});
+      rows+=`<tr><td class="r">${i+1}</td><td>${descHTML(it)}${bb?`<div class="inv-sub">Batch/Lot: ${esc(bb)}</div>`:''}<div class="inv-sub">CAS#: ${esc(it.cas)}${it.hs?', HS: '+esc(it.hs):''}</div></td><td class="r">${m.pkgs}</td><td class="r">${perPkg.toFixed(3)}</td><td class="r">${m.totNet.toFixed(3)}</td><td>${it.packSpec?esc(it.packSpec):'—'}</td></tr>`;});
     area.innerHTML=`<div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:8px;">PACKING LIST</div>
       <table class="inv"><thead><tr><th style="width:34px;">S.No</th><th>Description</th><th class="r" style="width:70px;">Pkgs</th><th class="r" style="width:100px;">Net/Pkg (${qU()})</th><th class="r" style="width:110px;">Total Net (${qU()})</th><th style="width:130px;">Remarks</th></tr></thead><tbody>${rows}</tbody>
       <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td>Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
-      <div class="inv-totals"><div class="inv-words">${state.order.sampleType!=='paid'?'No commercial value — packing list only. ':''}${totPkgs} package(s), total net ${totNet.toFixed(3)} ${qU()}.</div></div>`;
+      <div class="inv-totals"><div class="inv-words">${totPkgs} package(s), total net ${totNet.toFixed(3)} ${qU()}.</div></div>`;
     note.innerHTML='<b>PACKING LIST</b> — no prices; shows packages, net weight and remarks. Uses the chosen name (Customer / Airline / Customs).';
     return;
   }
@@ -1290,8 +1290,9 @@ const COMPANY_LEFT=`
   <div style="font-size:8pt;font-weight:600;color:#333;">(100% Export Oriented Unit)</div>
   <div style="font-size:7.5pt;margin-top:3px;line-height:1.4;color:#444;">
     Regd. Off: 901C Tower 2, One International Centre, Senapati Bapat Marg, Prabhadevi, Mumbai 400013. INDIA.<br>
-    Phone: +91-22-71400200 &nbsp; Fax: +91-22-71400299 &nbsp; E-mail: commercial@inventys.in<br>
-    Factory: K-38, Five Star Industrial Area, MIDC, Butibori, Nagpur-441122
+    Factory: K-38, Five Star Industrial Area, MIDC, Butibori, Nagpur-441122<br>
+    <b>Cell:</b> +91 9320013358 &nbsp; <b>Landline:</b> +91 22 7140 0200<br>
+    <b>eMail1:</b> dbirewar@inventys.in &nbsp; <b>eMail2:</b> ukamat@inventys.in
   </div>
   <div style="font-size:7.5pt;margin-top:5px;line-height:1.55;">
     <b>GSTIN No.</b> 27AABCI4415K1ZL &nbsp;|&nbsp; <b>IEC No.</b> 0306019141 &nbsp;|&nbsp; Udyam UDYAM-MH-19-0033403
@@ -1374,7 +1375,6 @@ function proformaPrint(){
       <td class="r" style="width:17%;">${rate.toFixed(4)}</td>
       <td class="r" style="width:16%;">${amt.toFixed(2)}</td>
     </tr>`;}).join('');
-  const gratis=state.order.sampleType!=='paid';
   return `<div class="pinv" style="font-size:9pt;">
     ${docHeader('PROFORMA INVOICE','(USD Terms)','Invoice')}
     ${docParties()}
@@ -1382,7 +1382,7 @@ function proformaPrint(){
       <th style="width:5%;">No.</th><th style="width:44%;">Description of Goods</th><th class="r" style="width:13%;">Qty (${qU()})</th><th class="r" style="width:17%;">Rate (USD/${qU()})</th><th class="r" style="width:16%;">Amount (USD)</th>
     </tr></thead><tbody>${rows}</tbody>
     <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td class="r">Sub Total</td><td class="r">${state.items.reduce((s,it)=>s+lineMetrics(it).totNet,0).toFixed(3)}</td><td></td><td class="r">USD ${sub.toFixed(2)}</td></tr></tfoot></table>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Amount in words:</b> ${wordsUSD(sub)}${gratis?' &nbsp; <span style="font-style:italic;color:#555;">(Free / Research sample — value for customs purposes only)</span>':''}</td></tr></table>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Amount in words:</b> ${wordsUSD(sub)}</td></tr></table>
     ${docMeta()}
     ${BANK_TERMS}
     <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;"><tr>
@@ -1400,7 +1400,7 @@ function packingPrint(){
       <td class="r" style="width:10%;">${m.pkgs}</td>
       <td class="r" style="width:13%;">${perPkg.toFixed(3)}</td>
       <td class="r" style="width:13%;">${m.totNet.toFixed(3)}</td>
-      <td style="width:17%;">${it.packSpec?esc(it.packSpec):'Sample for R&amp;D'}</td>
+      <td style="width:17%;">${it.packSpec?esc(it.packSpec):'—'}</td>
     </tr>`;}).join('');
   return `<div class="pinv" style="font-size:9pt;">
     ${docHeader('PACKING LIST','','Packing List')}
@@ -1409,7 +1409,7 @@ function packingPrint(){
       <th style="width:5%;">S.No</th><th style="width:42%;">Description of Goods</th><th class="r" style="width:10%;">No. of Pkg.</th><th class="r" style="width:13%;">Net Wt / Pkg. ${qU()}</th><th class="r" style="width:13%;">Total Net Wt ${qU()}</th><th style="width:17%;">Remarks</th>
     </tr></thead><tbody>${rows}</tbody>
     <tfoot><tr style="font-weight:700;background:#f5f5f5;"><td></td><td class="r">Total</td><td class="r">${totPkgs}</td><td></td><td class="r">${totNet.toFixed(3)}</td><td></td></tr></tfoot></table>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Total packages:</b> ${totPkgs} &nbsp;·&nbsp; <b>Total net weight:</b> ${totNet.toFixed(3)} ${qU()}${state.order.sampleType!=='paid'?' &nbsp;·&nbsp; <span style="font-style:italic;color:#555;">No commercial value — packing list only.</span>':''}</td></tr></table>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:8pt;"><tr><td style="padding:5px 8px;"><b>Total packages:</b> ${totPkgs} &nbsp;·&nbsp; <b>Total net weight:</b> ${totNet.toFixed(3)} ${qU()}</td></tr></table>
     ${docMeta()}
     <table style="width:100%;border-collapse:collapse;border:1px solid #666;border-top:none;font-size:7.5pt;"><tr>
       <td style="width:65%;padding:6px 8px;border-right:1px solid #666;vertical-align:top;">Goods &amp; Service Tax Details: GSTIN 27AABCI4415K1ZL · IEC 0306019141 · 100% Export Oriented Unit.</td>
@@ -1482,9 +1482,9 @@ function gstPrint(){
         <div style="font-size:8pt;font-weight:600;color:#333;">(100% Export Oriented Unit)</div>
         <div style="font-size:7.5pt;margin-top:3px;line-height:1.4;color:#444;">
           Regd. Off: 901C Tower 2, One International Centre, Senapati Bapat Marg, Prabhadevi, Mumbai 400013. INDIA.<br>
-          Phone: +91-22-71400200 &nbsp; Fax: +91-22-71400299 &nbsp; E-mail: commercial@inventys.in<br>
           Factory: K-38, Five Star Industrial Area, MIDC, Butibori, Nagpur-441122<br>
-          Phone: +91-9619666338/39/40
+          <b>Cell:</b> +91 9320013358 &nbsp; <b>Landline:</b> +91 22 7140 0200<br>
+          <b>eMail1:</b> dbirewar@inventys.in &nbsp; <b>eMail2:</b> ukamat@inventys.in
         </div>
         <div style="font-size:7.5pt;margin-top:5px;line-height:1.4;color:#444;">
           <b>Superintendent, Goods &amp; Service Tax Range II</b>, MIDC Main Road, CFC Building, MIDC, Butibori, District Nagpur, Nagpur-441122.<br>
