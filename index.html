@@ -1419,29 +1419,28 @@ function packingPrint(){
 }
 function addressPrint(){
   const C=consigneeInfo();
-  const logo=`<img src="${LOGO}" style="height:16mm;width:${16*LOGO_AR}mm;object-fit:contain;">`;
-  return `<div class="pinv" style="font-size:12pt;">
-    <div style="height:6px;background:linear-gradient(90deg,#464a90,#3a5a96 22%,#5ea637 55%,#f0a02e 80%,#ef6a22);margin-bottom:14px;"></div>
-    <table style="width:100%;border-collapse:collapse;">
-      <tr>
-        <td style="width:50%;vertical-align:top;padding:14px 16px;border:1.5px solid #333;">
-          <div style="font-size:10pt;font-weight:700;letter-spacing:.08em;color:#555;margin-bottom:8px;">FROM</div>
-          <div style="font-weight:700;font-size:12pt;">Dr. Deepak Birewar</div>
-          <div style="font-weight:700;">Inventys Research Company Pvt. Ltd</div>
-          <div style="margin-top:6px;line-height:1.5;">901C Tower 2, One International Centre,<br>Senapati Bapat Marg, Prabhadevi,<br>Mumbai 400013. INDIA</div>
-          <div style="margin-top:6px;">+91 9320013358 / +91 22 7140 0200</div>
-          <div>dbirewar@inventys.in</div>
-          <div style="margin-top:12px;">${logo}</div>
-        </td>
-        <td style="width:50%;vertical-align:top;padding:14px 16px;border:1.5px solid #333;border-left:none;">
-          <div style="font-size:10pt;font-weight:700;letter-spacing:.08em;color:#555;margin-bottom:8px;">TO</div>
-          <div style="font-weight:700;font-size:13pt;text-decoration:underline;">${esc(C.name)}</div>
-          <div style="margin-top:8px;line-height:1.6;white-space:pre-line;">${esc(C.address)}</div>
-          ${C.contact?`<div style="margin-top:10px;">Tel No.: ${esc(C.contact)}</div>`:''}
-          ${C.attn?`<div>ATTN: ${esc(C.attn)}</div>`:''}
-        </td>
-      </tr>
-    </table>
+  const tel=C.tel||C.contact||'';
+  const logo=`<img src="${LOGO}" style="height:20mm;width:${20*LOGO_AR}mm;object-fit:contain;display:block;">`;
+  return `<div class="pinv" style="position:relative;min-height:180mm;padding:8mm;font-family:var(--sans);">
+    <!-- logo: top-right corner -->
+    <div style="position:absolute;top:8mm;right:8mm;">${logo}</div>
+    <!-- From: smaller, top-left -->
+    <div style="max-width:52%;font-size:11pt;line-height:1.5;">
+      <div style="font-weight:700;margin-bottom:3px;">From</div>
+      <div>Dr. Deepak Birewar</div>
+      <div>Inventys Research Company Pvt. Ltd</div>
+      <div>901C Tower 2, One International Centre, Senapati Bapat Marg, Prabhadevi, Mumbai 400013. INDIA</div>
+      <div>+91 9320013358 / +91 22 7140 0200</div>
+      <div>dbirewar@inventys.in</div>
+    </div>
+    <!-- To: bottom-right, bigger font -->
+    <div style="position:absolute;bottom:20mm;right:8mm;width:62%;font-size:17pt;line-height:1.45;">
+      <div style="font-size:12pt;font-weight:700;letter-spacing:.06em;margin-bottom:4px;">TO</div>
+      <div style="font-weight:700;text-decoration:underline;">${esc(C.name)}</div>
+      <div style="margin-top:6px;white-space:pre-line;">${esc(C.address)}</div>
+      ${tel?`<div style="margin-top:8px;">Tel No.: ${esc(tel)}</div>`:''}
+      ${C.attn?`<div>ATTN: ${esc(C.attn)}</div>`:''}
+    </div>
   </div>`;
 }
 function gstPrint(){
