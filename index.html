@@ -593,7 +593,7 @@
         <label class="f"><span class="lab">Quantity unit <span class="mono">(all documents)</span></span><select class="in" data-path="order.qtyUnit"><option value="Kg">Kg</option><option value="g">g</option></select></label>
       </div>
       <div class="grid4" style="margin-top:12px;">
-        <label class="f"><span class="lab">USD → INR rate <button class="xrate-sync" id="syncInrBtn">↻ Sync live rate</button> <span id="rateSpin" style="display:none;color:var(--orange);font-family:var(--mono);font-size:10px;">● loading…</span></span><input class="in code" data-path="order.usdToInr" value="85.00"></label>
+        <label class="f"><span class="lab">USD → INR rate <button class="xrate-sync" id="syncInrBtn">↻ Sync live rate</button> <span id="rateSpin" style="display:none;color:var(--orange);font-family:var(--mono);font-size:10px;">● loading…</span></span><input class="in code" data-path="order.usdToInr" value="" placeholder="live rate — auto"></label>
         <label class="f"><span class="lab">INR → USD rate</span><input class="in code" id="inrToUsd" value="" placeholder="auto"></label>
         <label class="f"><span class="lab">Transport mode</span><select class="in" data-path="order.shipTransport.mode"><option value="By Air">By Air</option><option value="By Sea">By Sea</option><option value="By Road">By Road</option><option value="By Courier">By Courier</option></select></label>
         <label class="f"><span class="lab">Carrier / Airline</span><input class="in" data-path="order.shipTransport.carrier" value=""></label>
@@ -759,7 +759,7 @@ function customsName(code){const c=CATALOG[code];return c?(CPRE+(code+' '+c.cust
 function cleanChemName(s){s=(s||'').replace(/\s+/g,' ').trim();if(/\bacid\b/i.test(s))s=s.replace(/\b(acid)\b[\s\S]*$/i,'$1');s=s.replace(/(?:\s+(?:H3C|CH3|H\s*3\s*C|C\s*H\s*3|OH|HO|O|H))+$/,'').trim();return s;}
 function fill(item,code){const c=CATALOG[code];if(!c)return;item.code=code;item.customer=c.customer;item.airline=c.airline;item.cas=c.cas;item.hs=c.hs;item.signal=c.signal;item.hazards=c.hazards.map(x=>x.slice());item.precautions=c.precautions.map(x=>x.slice());item.storage=c.storage;item.transport=c.transport;}
 function fb(){return {batch:'',qty:'',bottleId:'b100',copies:'1',mfgDate:'',expDate:'',lotSize:'',outerWtNum:'',outerWtUnit:'',captured:[]};}
-function blankItem(){return {code:'',customer:'',matShort:'',airline:'',customs:'',customsName:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',stab:blankStab(),packSpec:'',unit:'Kg',rate:'16.67',rateInr:'47450',innerName:'',outerName:'',captured:[],batches:[fb()]};}
+function blankItem(){return {code:'',customer:'',matShort:'',airline:'',customs:'',customsName:'',cas:'',hs:'',signal:'',hazards:[],precautions:[],storage:'',transport:'',stab:blankStab(),packSpec:'',unit:'Kg',rate:'',rateInr:'',innerName:'',outerName:'',captured:[],batches:[fb()]};}
 function blankStab(){return {reactivity:'No data available',chemStability:'Stable under recommended storage conditions',hazReactions:'No data available',conditionsAvoid:'No data available',incompatible:'No data available',decomposition:'Carbon monoxide, carbon dioxide'};}
 function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rateInr=rateInr;it.batches=batches;fill(it,code);return it;}
 /* Everything starts blank; a saved document (localStorage) is restored on login.
@@ -767,7 +767,7 @@ function mk(code,batches,rate,rateInr){const it=blankItem();it.rate=rate;it.rate
 function blankState(){return {
   docName:'', _fid:0,
   order:{buyer:'',country:'',po:'',inv:'',date:'',
-    reference:'',usdToInr:'85.00',placeOfSupply:'',sampleType:'gratis',qtyUnit:'Kg',
+    reference:'',usdToInr:'',placeOfSupply:'',sampleType:'gratis',qtyUnit:'Kg',
     buyerToOrder:'',buyerAddress:'',buyerAttn:'',buyerContact:'',buyerTel:'',buyerFax:'',buyerMob:'',buyerEmail:'',
     consigneeSame:true,consignee:'',consigneeToOrder:'',consigneeAddress:'',consigneeAttn:'',consigneeContact:'',consigneeTel:'',consigneeFax:'',consigneeMob:'',consigneeEmail:'',
     portOfOrigin:'Mumbai',portOfDischarge:'',incoterms:'',
@@ -2092,6 +2092,18 @@ document.body.addEventListener('input',e=>{const el=e.target;
     autosave(); return;
   }
   if(el.dataset.tax){state.tax[el.dataset.tax]=el.value;autosave();return;} // no re-render while typing
+  // item rate fields: type in USD or INR and the other converts via the live rate
+  const rm=el.dataset.path && el.dataset.path.match(/^items\.(\d+)\.(rate|rateInr)$/);
+  if(rm && !el.closest('#invArea')){
+    const it=state.items[+rm[1]]; if(!it)return;
+    const xr=parseFloat(state.order.usdToInr)||0, raw=el.value.trim();
+    if(rm[2]==='rate'){ it.rate=raw; it.rateInr=(raw!==''&&xr>0)?(parseFloat(raw)*xr).toFixed(2):''; }
+    else { it.rateInr=raw; it.rate=(raw!==''&&xr>0)?(parseFloat(raw)/xr).toFixed(4):''; }
+    const otherPath='items.'+rm[1]+'.'+(rm[2]==='rate'?'rateInr':'rate');
+    const o=document.querySelector('#items input[data-path="'+otherPath+'"]');
+    if(o&&document.activeElement!==o) o.value=(rm[2]==='rate'?it.rateInr:it.rate);
+    renderInvoice(); autosave(); return;
+  }
   if(el.dataset.path){
     setPath(el.dataset.path,el.value);
     if(!el.closest('#invArea')){renderInner();renderOuter();renderSilos();renderInvoice();renderEstimates();}
@@ -2131,14 +2143,9 @@ function refreshInrToUsd(){
   const el=document.getElementById('inrToUsd');
   if(el && document.activeElement!==el) el.value=rate?('1 INR = $'+(1/rate).toFixed(4)):'';
 }
-document.getElementById('syncInrBtn').addEventListener('click',async function(){
-  const st=document.getElementById('docStatus'), spin=document.getElementById('rateSpin');
-  const btn=this, old=btn.textContent;
-  btn.textContent='↻ fetching…'; btn.disabled=true; if(spin)spin.style.display='inline';
-  notify('⏳ Fetching live USD↔INR rate…');
-  let rate=parseFloat(state.order.usdToInr)||85, live=false;
-  /* fetch the current live USD→INR rate (free, no API key). Falls back to the
-     manual rate if the browser is offline or the services can't be reached. */
+/* fetch the current live USD→INR rate (free, no API key). Returns {rate,live}. */
+async function fetchLiveRate(){
+  let rate=0, live=false;
   try{
     const r=await fetch('https://open.er-api.com/v6/latest/USD');
     const j=await r.json();
@@ -2150,17 +2157,35 @@ document.getElementById('syncInrBtn').addEventListener('click',async function(){
       if(j2&&j2.rates&&j2.rates.INR){ rate=j2.rates.INR; live=true; }
     }catch(e2){}
   }
+  return {rate,live};
+}
+/* set the exchange rate and re-derive each item's INR rate from its USD rate
+   (USD is the base). Empty USD rate leaves INR empty too. */
+function applyXrate(rate){
   state.order.usdToInr=rate.toFixed(2);
-  const inrInput=document.querySelector('[data-path="order.usdToInr"]');
-  if(inrInput) inrInput.value=rate.toFixed(2);
-  state.items.forEach(it=>{it.rateInr=(parseFloat(it.rate||0)*rate).toFixed(2);});
+  const inrInput=document.querySelector('[data-path="order.usdToInr"]'); if(inrInput) inrInput.value=rate.toFixed(2);
+  state.items.forEach(it=>{ it.rateInr=(it.rate!=='' && it.rate!=null)?(parseFloat(it.rate)*rate).toFixed(2):''; });
   renderAll(); refreshInrToUsd();
+}
+document.getElementById('syncInrBtn').addEventListener('click',async function(){
+  const st=document.getElementById('docStatus'), spin=document.getElementById('rateSpin');
+  const btn=this, old=btn.textContent;
+  btn.textContent='↻ fetching…'; btn.disabled=true; if(spin)spin.style.display='inline';
+  notify('⏳ Fetching live USD↔INR rate…');
+  const {rate,live}=await fetchLiveRate();
+  if(rate>0) applyXrate(rate);
   btn.textContent=old; btn.disabled=false; if(spin)spin.style.display='none';
   if(st){ st.textContent = live
     ? `Live rate fetched: 1 USD = ₹${rate.toFixed(2)} — item INR rates updated.`
-    : `Couldn't reach the live-rate service (offline?). Used manual rate 1 USD = ₹${rate.toFixed(2)}.`; }
-  notify(live?`✓ Live rate: 1 USD = ₹${rate.toFixed(2)}`:`⚠ Offline — using manual rate ₹${rate.toFixed(2)}`);
+    : `Couldn't reach the live-rate service (offline?). Enter the rate manually.`; }
+  notify(live?`✓ Live rate: 1 USD = ₹${rate.toFixed(2)}`:`⚠ Couldn't fetch — enter rate manually`);
 });
+/* auto-fetch the live rate on load when none is set (e.g. a fresh document) */
+(async function(){
+  if(parseFloat(state.order.usdToInr)>0) return;
+  const {rate,live}=await fetchLiveRate();
+  if(live && rate>0 && !(parseFloat(state.order.usdToInr)>0)) applyXrate(rate);
+})();
 /* document name · Save · New (blank) */
 (function(){
   const save=document.getElementById('saveDocBtn'), nw=document.getElementById('newDocBtn'), nm=document.getElementById('docNameInput');
