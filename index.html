@@ -1421,7 +1421,7 @@ function addressPrint(){
   const C=consigneeInfo();
   const tel=C.tel||C.contact||'';
   const logo=`<img src="${LOGO}" style="height:20mm;width:${20*LOGO_AR}mm;object-fit:contain;display:block;">`;
-  return `<div class="pinv" style="position:relative;min-height:180mm;padding:8mm;font-family:var(--sans);">
+  return `<div class="pinv" style="position:relative;padding:8mm;font-family:var(--sans);">
     <!-- logo: top-right corner -->
     <div style="position:absolute;top:8mm;right:8mm;">${logo}</div>
     <!-- From: smaller, top-left -->
@@ -1433,8 +1433,8 @@ function addressPrint(){
       <div>+91 9320013358 / +91 22 7140 0200</div>
       <div>dbirewar@inventys.in</div>
     </div>
-    <!-- To: bottom-right, bigger font -->
-    <div style="position:absolute;bottom:20mm;right:8mm;width:62%;font-size:17pt;line-height:1.45;">
+    <!-- To: right after From, on the right, bigger font -->
+    <div style="width:62%;margin:16mm 0 0 auto;font-size:17pt;line-height:1.45;">
       <div style="font-size:12pt;font-weight:700;letter-spacing:.06em;margin-bottom:4px;">TO</div>
       <div style="font-weight:700;text-decoration:underline;">${esc(C.name)}</div>
       <div style="margin-top:6px;white-space:pre-line;">${esc(C.address)}</div>
